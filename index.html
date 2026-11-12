@@ -1,0 +1,1834 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}</style><title>True North Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: survey-office dashboard. Fixed menu on the left (desktop) or a tab bar at the bottom (phone and tablet),
+   one tool per view, summary tiles on the overview. Every grid sizes itself from the space it has. */
+/* Palette: the four colours of the Google logo (blue, red, yellow, green) as raw fills,
+   plus darker or lighter text-safe versions of each for labels and values. */
+:root {
+  --bg: #f8f9fa; --panel: #ffffff; --soft: #e8f0fe; --ink: #202124; --muted: #5f6368; --line: #dadce0;
+  --north: #c5221f; --sun: #9a5200; --mag: #1967d2; --ok: #188038; --bad: #c5221f;
+  --g1: #4285f4; --g2: #ea4335; --g3: #fbbc05; --g4: #34a853;
+  --c1: #1967d2; --c1s: #e8f0fe; --c2: #9a5200; --c2s: #fef3c7; --c3: #188038; --c3s: #e6f4ea;
+  --c4: #c5221f; --c4s: #fce8e6; --c5: #1967d2; --c5s: #e8f0fe;
+  --i1: #4285f4; --i2: #fbbc05; --i3: #34a853; --i4: #ea4335; --i5: #4285f4;
+  --on1: #ffffff; --on2: #202124; --on3: #ffffff; --on4: #ffffff; --on5: #ffffff;
+  --sb-bg: #ffffff; --sb-ink: #202124; --sb-muted: #5f6368; --sb-hover: rgba(60, 64, 67, 0.08); --sb-line: #dadce0;
+  --font-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-num: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #202124; --panel: #292a2d; --soft: #1c2a45; --ink: #e8eaed; --muted: #9aa0a6; --line: #3c4043;
+    --north: #f28b82; --sun: #fdd663; --mag: #8ab4f8; --ok: #81c995; --bad: #f28b82;
+    --c1: #8ab4f8; --c1s: #1c2a45; --c2: #fdd663; --c2s: #3a3115; --c3: #81c995; --c3s: #17321f;
+    --c4: #f28b82; --c4s: #40201f; --c5: #8ab4f8; --c5s: #1c2a45;
+    --sb-bg: #1b1c1e; --sb-ink: #e8eaed; --sb-muted: #9aa0a6; --sb-hover: rgba(232, 234, 237, 0.08); --sb-line: #3c4043;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #202124; --panel: #292a2d; --soft: #1c2a45; --ink: #e8eaed; --muted: #9aa0a6; --line: #3c4043;
+  --north: #f28b82; --sun: #fdd663; --mag: #8ab4f8; --ok: #81c995; --bad: #f28b82;
+  --c1: #8ab4f8; --c1s: #1c2a45; --c2: #fdd663; --c2s: #3a3115; --c3: #81c995; --c3s: #17321f;
+  --c4: #f28b82; --c4s: #40201f; --c5: #8ab4f8; --c5s: #1c2a45;
+  --sb-bg: #1b1c1e; --sb-ink: #e8eaed; --sb-muted: #9aa0a6; --sb-hover: rgba(232, 234, 237, 0.08); --sb-line: #3c4043;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--panel); }
+
+/* App shell */
+.app { --vc: var(--c1); --vcs: var(--c1s); display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; }
+.side {
+  position: sticky; top: env(safe-area-inset-top, 0px); align-self: start; height: 100vh;
+  display: flex; flex-direction: column; gap: 20px; min-width: 0;
+  background: var(--sb-bg); color: var(--sb-ink); border-right: 1px solid var(--sb-line);
+  padding-block: 20px 16px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 12px;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; }
+.brand svg { width: 34px; height: 34px; flex: none; }
+.brand b { display: block; font-size: 16px; line-height: 1.2; font-weight: 600; letter-spacing: -0.005em; }
+.brand small { display: block; font-size: 12px; color: var(--sb-muted); }
+.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav a {
+  display: flex; align-items: center; gap: 12px; padding: 7px 12px 7px 8px; border-radius: 10px;
+  color: var(--sb-ink); text-decoration: none; font-weight: 500; font-size: 15px; min-height: 46px;
+}
+.nav a:hover { background: var(--sb-hover); }
+.nav a[aria-current="page"] { background: var(--cs); color: var(--c); font-weight: 600; }
+.nav svg { width: 32px; height: 32px; padding: 6px; border-radius: 8px; background: var(--cs); color: var(--c); }
+.nav a[aria-current="page"] svg { background: var(--i); color: var(--on); }
+.nav svg, .tabs svg { flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tabs svg { width: 22px; height: 22px; color: var(--c); }
+.site { margin-top: auto; padding: 12px; border: 1px solid var(--sb-line); border-radius: 8px; background: var(--sb-hover); font-size: 13px; min-width: 0; }
+.site span { display: block; color: var(--sb-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600; margin-bottom: 4px; }
+.site code { display: block; font: 500 13px var(--font-num); overflow-wrap: anywhere; }
+.site a { display: inline-block; margin-top: 6px; color: var(--mag); }
+
+.main { min-width: 0; display: flex; flex-direction: column; }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--panel); border-bottom: 1px solid var(--line); }
+.top::after { content: ""; display: block; height: 4px; background: linear-gradient(90deg, var(--g1) 0 25%, var(--g2) 25% 50%, var(--g3) 50% 75%, var(--g4) 75% 100%); }
+.top-in {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px;
+  padding-block: 12px; padding-left: 28px;
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.ttl { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.vbadge { width: 42px; height: 42px; border-radius: 10px; background: var(--vcs); color: var(--vc); display: grid; place-items: center; flex: none; }
+.vbadge svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.top h1 { font-size: 22px; line-height: 1.2; margin: 0; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.top p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.ctl .dec { display: flex; align-items: center; gap: 8px; }
+.ctl .dec label { margin: 0; white-space: nowrap; }
+.ctl .dec input { width: 92px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--bg); }
+.seg label { margin: 0; position: relative; }
+.seg input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.seg span { display: block; padding: 8px 14px; min-height: 40px; line-height: 24px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.seg input:checked + span { background: var(--vcs); color: var(--vc); font-weight: 600; }
+.seg label:focus-within { outline: 2px solid var(--mag); outline-offset: -2px; }
+
+.content {
+  padding-block: 20px 40px; padding-left: 28px;
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.page { max-width: 1200px; margin: 0 auto; }
+.view { display: flex; flex-direction: column; gap: 16px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 12px; }
+.kpi { display: block; padding: 14px 16px; background: var(--cs); border: 1px solid transparent; border-radius: 8px; color: inherit; text-decoration: none; min-width: 0; }
+.k1 { --c: var(--c1); --cs: var(--c1s); }
+.k2 { --c: var(--c2); --cs: var(--c2s); }
+.k3 { --c: var(--c3); --cs: var(--c3s); }
+.k4 { --c: var(--c4); --cs: var(--c4s); }
+.k5 { --c: var(--c5); --cs: var(--c5s); }
+.kpi:hover { border-color: var(--c); }
+.kpi:focus-visible { outline: 2px solid var(--mag); outline-offset: 2px; }
+.kpi span { display: block; font-size: 12px; color: var(--c); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; }
+.kpi b { color: var(--c); display: block; margin: 6px 0 2px; font: 600 21px/1.25 var(--font-num); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kpi small { display: block; font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+
+.tabs { display: none; }
+
+/* Components */
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.09em; color: var(--vc); margin: 0 0 12px; font-weight: 600; }
+h2::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--vc); margin-right: 8px; vertical-align: 1px; }
+h3 { font-size: 15px; font-weight: 600; margin: 22px 0 8px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 12px; }
+.fields .wide { grid-column: 1 / -1; }
+label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+input[type=text], input[type=number], input[type=datetime-local] {
+  width: 100%; font: 500 15px var(--font-num); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-height: 40px;
+}
+textarea { width: 100%; font: 500 15px var(--font-num); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; resize: vertical; line-height: 1.5; }
+input:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--mag); outline-offset: 2px; }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); margin: 0; }
+.check input { width: 16px; height: 16px; accent-color: var(--mag); }
+.hint { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+.hint a, .link { color: var(--vc); }
+.err { color: var(--bad); font-size: 13px; margin: 8px 0 0; min-height: 1px; }
+.okmsg { color: var(--ok); font-size: 13px; margin: 6px 0 0; }
+dl { margin: 0; display: grid; gap: 0; }
+.r { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 9px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.r:first-child { border-top: 0; padding-top: 0; }
+.r dt { color: var(--muted); font-size: 14px; }
+.r dd { margin: 0; font: 500 15px var(--font-num); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.r.big dd { font-size: 22px; font-weight: 600; }
+.r.big dt { color: var(--ink); font-weight: 500; }
+.n { color: var(--north); }
+.s { color: var(--sun); }
+.m { color: var(--mag); }
+.note { margin: 12px 0 0; padding: 10px 12px; background: var(--bg); border-radius: 6px; font-size: 14px; border-left: 3px solid var(--sun); }
+button.btn {
+  font: 600 14px var(--font-ui); color: var(--vc); background: var(--vcs); border: 1px solid transparent;
+  border-radius: 6px; padding: 8px 14px; min-height: 40px; cursor: pointer;
+}
+button.btn:hover { border-color: var(--vc); }
+svg { display: block; width: 100%; height: auto; max-width: 100%; }
+svg.ringsvg { max-width: 540px; margin: 0 auto; }
+.ring { fill: var(--vcs); stroke: var(--ink); stroke-width: 1.5; }
+.tick { stroke: var(--muted); stroke-width: 1; }
+.tick.maj { stroke: var(--ink); stroke-width: 1.6; }
+.dlabel { fill: var(--muted); font: 500 11px var(--font-num); text-anchor: middle; dominant-baseline: middle; }
+.card { fill: var(--ink); font: 600 17px var(--font-ui); text-anchor: middle; dominant-baseline: middle; }
+.card.nn { fill: var(--north); font-size: 20px; }
+.nsline { stroke: var(--north); stroke-width: 1.5; stroke-dasharray: 2 5; opacity: 0.7; }
+.ntip { fill: var(--north); }
+.shadow { stroke: var(--ink); stroke-width: 5; stroke-linecap: round; opacity: 0.8; }
+.ray { stroke: var(--sun); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.sunc { fill: var(--g3); stroke: var(--sun); stroke-width: 2; }
+.needle { stroke: var(--mag); stroke-width: 2.5; stroke-linecap: round; }
+.hub { fill: var(--ink); }
+.abline { stroke: var(--ok); stroke-width: 3.5; stroke-linecap: round; }
+.abtip { fill: var(--ok); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 10px 4px 0; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 0; border-top: 3px solid; display: inline-block; }
+.legend .l-n { border-color: var(--north); border-top-style: dotted; }
+.legend .l-m { border-color: var(--mag); }
+.legend .l-b { border-color: var(--ok); }
+.legend .l-s { border-color: var(--sun); border-top-style: dashed; }
+.legend .l-d { border-color: var(--ink); }
+details { margin-top: 12px; }
+summary { cursor: pointer; font-size: 14px; color: var(--vc); font-weight: 500; }
+ol.steps, details ol { margin: 0; padding-left: 20px; font-size: 14px; }
+details ol { margin-top: 8px; }
+ol.steps li, details li { margin-bottom: 6px; }
+.tw { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--vc); font-weight: 600; padding: 6px 14px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); font-family: var(--font-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+tbody tr:hover td { background: var(--vcs); }
+#plotSvg { --pc: var(--c4); }
+#cenSvg { --pc: var(--c5); }
+.pfill { fill: var(--pc, var(--mag)); fill-opacity: 0.18; stroke: var(--pc, var(--mag)); stroke-width: 2.5; stroke-linejoin: round; }
+.spoke { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.pdot { fill: var(--pc, var(--mag)); stroke: var(--bg); stroke-width: 2; }
+.cenx { stroke: var(--north); stroke-width: 2.5; stroke-linecap: round; }
+.cenc { fill: none; stroke: var(--north); stroke-width: 2; }
+.pnum { fill: var(--ink); font: 600 14px var(--font-ui); text-anchor: middle; dominant-baseline: middle; }
+.pdim { fill: var(--muted); font: 500 11px var(--font-num); text-anchor: middle; dominant-baseline: middle; }
+.pscale { stroke: var(--ink); stroke-width: 2; }
+.gridl { stroke: var(--line); stroke-width: 1; }
+.gridl.ax { stroke: var(--muted); opacity: 0.55; }
+.qdot { fill: var(--pc, var(--mag)); stroke: var(--bg); stroke-width: 2; }
+.pdot.pin { fill: var(--c3); }
+.pdot.pout { fill: var(--c4); }
+.legend .l-q { border-color: var(--c5); }
+.legend .l-in { border-color: var(--c3); }
+.legend .l-out { border-color: var(--c4); }
+.gwrap { display: flex; gap: 8px; align-items: stretch; }
+.gwrap input { flex: 1; min-width: 0; }
+.gps { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; font: 600 13px var(--font-ui); color: var(--vc); background: var(--vcs); border: 1px solid transparent; border-radius: 6px; padding: 0 12px; min-height: 40px; cursor: pointer; }
+.gps svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.gps:hover { border-color: var(--vc); }
+.gps[disabled] { opacity: 0.6; cursor: progress; }
+.gpsrow { margin-top: 8px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); width: max-content; max-width: min(92vw, 460px); z-index: 40; background: var(--ink); color: var(--bg); padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+.zbar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.zbar input[type=range] { flex: 1; min-width: 70px; accent-color: var(--vc); }
+.zb { width: 44px; padding: 0 !important; font-size: 20px !important; line-height: 1; }
+.zlab { font: 600 14px var(--font-num); min-width: 56px; text-align: right; color: var(--vc); }
+.tag { display: inline-block; padding: 1px 10px; border-radius: 999px; font: 600 12px var(--font-ui); }
+.tag.in { background: var(--c3s); color: var(--c3); }
+.tag.out { background: var(--c4s); color: var(--c4); }
+.tag.cor { background: var(--c5s); color: var(--c5); }
+.pdeg { fill: var(--pc, var(--mag)); font: 600 12px var(--font-num); text-anchor: middle; dominant-baseline: middle; }
+.vbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 10px; }
+.vbar .zbar { flex: 1; min-width: 240px; margin-bottom: 0; }
+#planSvg { --pc: var(--c5); max-width: 760px; }
+.mframe { fill: var(--bg); }
+.mframe2 { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.mtick { fill: var(--muted); font: 500 11px var(--font-num); text-anchor: middle; dominant-baseline: middle; }
+.mtick.y { text-anchor: end; }
+.sidelab, .clab { fill: var(--ink); font: 600 12px var(--font-num); text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
+.clab { font: 700 15px var(--font-ui); fill: var(--c5); }
+.diag { stroke: var(--pc); stroke-width: 1; stroke-dasharray: 2 5; opacity: 0.6; }
+.nref { stroke: var(--north); stroke-width: 2; stroke-dasharray: 2 5; stroke-linecap: round; }
+.bline { stroke: var(--c1); stroke-width: 3; stroke-linecap: round; }
+.arc { fill: none; stroke: var(--c1); stroke-width: 3; }
+.arclab { fill: var(--c1); font: 700 15px var(--font-num); text-anchor: middle; dominant-baseline: middle; paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
+.psel { fill: none; stroke: var(--c1); stroke-width: 3; }
+.mnum { fill: #fff; font: 700 13px var(--font-num); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+[data-i] { cursor: pointer; }
+.chh { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+.chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 8px; }
+.chip { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0 8px; text-align: left; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-height: 44px; cursor: pointer; }
+.chip b { grid-row: span 2; align-self: center; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #fff; font: 700 13px var(--font-num); }
+.chip.pin b { background: var(--c3); }
+.chip.pout b { background: var(--c4); }
+.chip.cor b { background: var(--c5); border-radius: 6px; }
+.chip span { font: 600 14px var(--font-num); }
+.chip small { font: 500 11px var(--font-num); color: var(--muted); white-space: nowrap; }
+.chip span { white-space: nowrap; }
+.chip:hover { border-color: var(--vc); }
+.chip.on { border-color: var(--c1); box-shadow: 0 0 0 2px var(--c1); }
+.selinfo { margin-top: 12px; border: 1px solid var(--line); border-left: 4px solid var(--c1); border-radius: 8px; padding: 10px 12px; }
+.selhead { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.selhead b { font-size: 16px; }
+.selgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px 16px; }
+.selgrid small { display: block; font-size: 12px; color: var(--muted); }
+.selgrid b { font: 600 15px var(--font-num); }
+tr.clk { cursor: pointer; }
+tr.sel td { background: var(--vcs); }
+@media (min-width: 1180px) { #v-centre > .cols { grid-template-columns: minmax(0, 360px) minmax(0, 1fr); } }
+.pmk { fill: var(--bg); font: 600 12px var(--font-ui); text-anchor: middle; dominant-baseline: middle; }
+
+/* Tablet and phone: the menu moves to a tab bar at the bottom */
+@media (max-width: 959px) {
+  .toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .app { grid-template-columns: minmax(0, 1fr); }
+  .side { display: none; }
+  .top-in, .content { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+  .content { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  .tabs {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
+    background: var(--panel); border-top: 1px solid var(--line);
+    padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+  }
+  .tabs a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    min-height: 52px; padding: 4px 2px; border-radius: 8px; color: var(--muted);
+    text-decoration: none; font-size: 11px; font-weight: 500; line-height: 1.2; text-align: center;
+  }
+  .tabs a span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tabs a[aria-current="page"] { background: var(--cs); color: var(--c); }
+}
+@media (max-width: 520px) {
+  .top h1 { font-size: 20px; }
+  .top p { display: none; }
+  .ctl { width: 100%; justify-content: space-between; }
+  .r.big dd { font-size: 20px; }
+}
+</style>
+
+</head><body><div class="app">
+  <aside class="side" aria-label="Menu">
+    <div class="brand">
+      <svg viewBox="0 0 40 40" aria-hidden="true">
+        <path d="M20 3A17 17 0 0 1 37 20" fill="none" stroke="var(--g1)" stroke-width="3.5"></path>
+        <path d="M37 20A17 17 0 0 1 20 37" fill="none" stroke="var(--g4)" stroke-width="3.5"></path>
+        <path d="M20 37A17 17 0 0 1 3 20" fill="none" stroke="var(--g3)" stroke-width="3.5"></path>
+        <path d="M3 20A17 17 0 0 1 20 3" fill="none" stroke="var(--g2)" stroke-width="3.5"></path>
+        <polygon points="20,7 25,22 20,19 15,22" fill="var(--g2)"></polygon>
+        <polygon points="20,35 15,22 20,25 25,22" fill="currentColor" opacity="0.55"></polygon>
+      </svg>
+      <div><b>True North Finder</b><small>Plot and bearing survey</small></div>
+    </div>
+    <nav class="nav" id="navSide" aria-label="Sections"></nav>
+    <div class="site">
+      <span>Site</span>
+      <code id="sbCoord">—</code>
+      <a id="sbLink" href="https://www.google.com/maps" target="_blank" rel="noopener">Open in Google Maps</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <div class="top-in">
+        <div class="ttl">
+          <span class="vbadge" id="vIcon"></span>
+          <div>
+            <h1 id="vTitle">Overview</h1>
+            <p id="vSub">True north, the sun and your plot at a glance.</p>
+          </div>
+        </div>
+        <div class="ctl">
+          <div class="seg" role="radiogroup" aria-label="Distance unit">
+            <label for="uFt"><input id="uFt" name="unit" type="radio" checked><span>Feet</span></label>
+            <label for="uM"><input id="uM" name="unit" type="radio"><span>Metres</span></label>
+          </div>
+          <div class="dec">
+            <label for="decl">Declination ° E</label>
+            <input id="decl" type="number" step="0.01" value="0.50">
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="page">
+
+        <!-- Overview -->
+        <div class="view" id="v-overview">
+          <div class="kpis">
+            <a class="kpi k1" href="#overview"><span>Compass shows true north at</span><b class="m" id="kN">—</b><small id="kNs">—</small></a>
+            <a class="kpi k2" href="#site"><span>Sun azimuth</span><b class="s" id="kAz">—</b><small id="kAzs">—</small></a>
+            <a class="kpi k2" href="#site"><span>Solar noon</span><b id="kNoon">—</b><small id="kNoons">—</small></a>
+            <a class="kpi k4" href="#plot"><span>Plot area</span><b id="kArea">—</b><small id="kAreas">—</small></a>
+            <a class="kpi k3" href="#bearing"><span>Bearing A to B</span><b class="n" id="kBrg">—</b><small id="kBrgs">—</small></a>
+            <a class="kpi k5" href="#centre"><span>Points from a centre</span><b id="kPts">—</b><small id="kPtss">—</small></a>
+          </div>
+
+          <div class="cols">
+            <section>
+              <h2>Compass dial</h2>
+              <svg id="dial" class="ringsvg" viewBox="0 0 400 400" role="img" aria-label="Plan view of the ground with true north, magnetic north, the sun direction and the shadow line">
+                <circle class="ring" cx="200" cy="200" r="150"></circle>
+                <g id="ticks"></g>
+                <g id="nums"></g>
+                <line class="nsline" x1="200" y1="46" x2="200" y2="354"></line>
+                <text class="card nn" x="200" y="22">N</text>
+                <text class="card" x="378" y="200">E</text>
+                <text class="card" x="200" y="378">S</text>
+                <text class="card" x="22" y="200">W</text>
+                <polygon class="ntip" points="200,36 191,60 209,60"></polygon>
+                <g id="gLine" style="display:none"><line class="abline" x1="200" y1="200" x2="200" y2="78"></line><polygon class="abtip" points="200,58 191,80 209,80"></polygon></g>
+                <g id="gShadow"><line class="shadow" id="shLine" x1="200" y1="200" x2="200" y2="110"></line></g>
+                <g id="gSun"><line class="ray" x1="200" y1="200" x2="200" y2="62"></line><circle class="sunc" cx="200" cy="50" r="10"></circle></g>
+                <g id="gMag"><line class="needle" x1="200" y1="200" x2="200" y2="70"></line></g>
+                <circle class="hub" cx="200" cy="200" r="5"></circle>
+              </svg>
+              <div class="legend">
+                <span><i class="l-n"></i>True north-south line</span>
+                <span><i class="l-m"></i>Magnetic north</span>
+                <span><i class="l-b"></i>Point A to point B</span>
+                <span><i class="l-s"></i>Sun direction</span>
+                <span><i class="l-d"></i>Shadow (length not to scale)</span>
+              </div>
+            </section>
+
+            <div class="view">
+              <section>
+                <h2>Reference lines</h2>
+                <dl>
+                  <div class="r big"><dt>True north</dt><dd class="n">0.000° / 360°</dd></div>
+                  <div class="r big"><dt>True south</dt><dd class="n">180.000°</dd></div>
+                  <div class="r"><dt>A compass shows true north at</dt><dd class="m" id="cN">—</dd></div>
+                  <div class="r"><dt>A compass shows true south at</dt><dd class="m" id="cS">—</dd></div>
+                  <div class="r"><dt>UTM grid bearing of true north</dt><dd id="gridB">—</dd></div>
+                  <div class="r"><dt>UTM zone and central meridian</dt><dd id="utm">—</dd></div>
+                </dl>
+              </section>
+              <section>
+                <h2>Mark true north on the ground</h2>
+                <ol class="steps">
+                  <li>Set a straight stick upright on flat ground, checked with a plumb line.</li>
+                  <li>Mark the tip of its shadow. Mark it again every few minutes, from about 30 minutes before solar noon to 30 minutes after.</li>
+                  <li>The shortest shadow, which falls at solar noon, lies on the true north-south line.</li>
+                  <li>At any other time, draw the shadow line, then rotate it by the angle in the Site and sun view to get true north.</li>
+                </ol>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <!-- Site and sun -->
+        <div class="view" id="v-site" hidden>
+          <div class="cols">
+            <section>
+              <h2>Location and time</h2>
+              <div class="fields">
+                <div class="wide">
+                  <label for="gm">Paste from Google Maps</label>
+                  <input id="gm" type="text" placeholder="21.136983, 78.772362, or a Google Maps link" autocomplete="off" spellcheck="false">
+                  <p class="hint" id="gmStatus" aria-live="polite">Accepts decimal degrees, degrees-minutes-seconds and full Google Maps links.</p>
+                </div>
+                <div>
+                  <label for="lat">Latitude (°, north positive)</label>
+                  <input id="lat" type="text" inputmode="decimal" value="21.136983" autocomplete="off">
+                </div>
+                <div>
+                  <label for="lon">Longitude (°, east positive)</label>
+                  <input id="lon" type="text" inputmode="decimal" value="78.772362" autocomplete="off">
+                </div>
+                <div class="wide">
+                  <label for="when">Date and time (your device's time zone)</label>
+                  <input id="when" type="datetime-local" step="1">
+                </div>
+                <div class="wide row">
+                  <label class="check" for="live"><input id="live" type="checkbox" checked> Follow the current time</label>
+                  <button class="btn" id="now" type="button">Reset to now</button>
+                </div>
+              </div>
+              <p class="hint">Set the magnetic declination in the top bar. It starts as an estimate for central India. Look up the exact current value at the <a href="https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml#declination" target="_blank" rel="noopener">NOAA declination calculator</a>.</p>
+              <p class="err" id="err" role="alert"></p>
+              <p class="hint"><a id="gmLink" href="https://www.google.com/maps?q=21.136983,78.772362" target="_blank" rel="noopener">Open this spot in Google Maps</a></p>
+              <details>
+                <summary>How to copy coordinates from Google Maps</summary>
+                <ol>
+                  <li>On a computer, right-click the spot on the map. The coordinates are the first item in the menu; click them to copy.</li>
+                  <li>On a phone, touch and hold the spot to drop a pin. The coordinates show in the search bar or the sheet below; tap them to copy.</li>
+                  <li>You can also paste the full link from the browser address bar. Shortened links such as maps.app.goo.gl hide the coordinates, so open them first.</li>
+                </ol>
+              </details>
+            </section>
+
+            <section>
+              <h2>Sun at the selected time</h2>
+              <dl>
+                <div class="r"><dt>Sun azimuth (from true north)</dt><dd class="s" id="az">—</dd></div>
+                <div class="r"><dt>Sun elevation</dt><dd class="s" id="el">—</dd></div>
+                <div class="r"><dt>Shadow points toward</dt><dd id="shb">—</dd></div>
+              </dl>
+              <p class="note" id="shNote">—</p>
+            </section>
+
+            <section>
+              <h2>Solar noon</h2>
+              <dl>
+                <div class="r"><dt>Solar noon (device time)</dt><dd id="noon">—</dd></div>
+                <div class="r"><dt>Sun azimuth at solar noon</dt><dd class="s" id="noonAz">—</dd></div>
+                <div class="r"><dt>Sun elevation at solar noon</dt><dd class="s" id="noonEl">—</dd></div>
+                <div class="r"><dt>Shadow of a 1 m (3.28 ft) stick at noon</dt><dd id="noonSh">—</dd></div>
+              </dl>
+              <p class="hint" id="noonHint"></p>
+            </section>
+
+            <section>
+              <h2>Convert a compass reading</h2>
+              <div class="fields">
+                <div>
+                  <label for="mb">Compass reading (°)</label>
+                  <input id="mb" type="number" step="0.1" value="90">
+                </div>
+                <div>
+                  <label for="tb">True bearing (°)</label>
+                  <input id="tb" type="text" readonly>
+                </div>
+              </div>
+              <p class="hint">True bearing = compass reading + declination.</p>
+              <div class="row" style="margin-top:12px">
+                <button class="btn" id="copy" type="button">Copy results</button>
+                <span class="hint" id="copied" style="margin:0"></span>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Two points -->
+        <div class="view" id="v-bearing" hidden>
+          <div class="cols">
+            <section>
+              <h2>Point A and point B</h2>
+              <div class="fields">
+                <div class="wide">
+                  <label for="pa">Point A (start)</label>
+                  <input id="pa" type="text" value="21.136983, 78.772362" autocomplete="off" spellcheck="false">
+                  <p class="hint" id="paSt" aria-live="polite"></p>
+                </div>
+                <div class="wide">
+                  <label for="pb">Point B (end)</label>
+                  <input id="pb" type="text" value="21.140000, 78.775000" autocomplete="off" spellcheck="false">
+                  <p class="hint" id="pbSt" aria-live="polite"></p>
+                </div>
+                <div class="wide row">
+                  <button class="btn" id="useLoc" type="button">Use the site location as A</button>
+                  <button class="btn" id="swap" type="button">Swap A and B</button>
+                </div>
+              </div>
+              <p class="hint">Each point takes a pair, a degrees-minutes-seconds value or a full Google Maps link. Both points start as examples. Bearings run clockwise from true north.</p>
+            </section>
+            <section>
+              <h2>Direction from A to B</h2>
+              <dl>
+                <div class="r big"><dt>True bearing A to B</dt><dd class="n" id="brg">—</dd></div>
+                <div class="r"><dt>As a north-south angle</dt><dd id="quad">—</dd></div>
+                <div class="r"><dt>In degrees, minutes, seconds</dt><dd id="brgDms">—</dd></div>
+                <div class="r"><dt>True bearing B to A</dt><dd id="brgBack">—</dd></div>
+                <div class="r"><dt>Compass bearing to follow A to B</dt><dd class="m" id="brgMag">—</dd></div>
+                <div class="r"><dt>Distance</dt><dd id="dist">—</dd></div>
+              </dl>
+              <p class="hint">The compass bearing subtracts the declination set in the top bar. The green arrow on the <a class="link" href="#overview">overview dial</a> shows this direction.</p>
+            </section>
+          </div>
+        </div>
+
+        <!-- Plot -->
+        <div class="view" id="v-plot" hidden>
+          <div class="cols">
+            <section>
+              <h2>Four corners</h2>
+              <div class="fields">
+                <div class="wide">
+                  <label for="c1">Corner 1</label>
+                  <input id="c1" type="text" value="21.136900, 78.772200" autocomplete="off" spellcheck="false">
+                  <p class="hint" id="c1St" aria-live="polite"></p>
+                </div>
+                <div class="wide">
+                  <label for="c2">Corner 2</label>
+                  <input id="c2" type="text" value="21.137250, 78.772350" autocomplete="off" spellcheck="false">
+                  <p class="hint" id="c2St" aria-live="polite"></p>
+                </div>
+                <div class="wide">
+                  <label for="c3">Corner 3</label>
+                  <input id="c3" type="text" value="21.137120, 78.772700" autocomplete="off" spellcheck="false">
+                  <p class="hint" id="c3St" aria-live="polite"></p>
+                </div>
+                <div class="wide">
+                  <label for="c4">Corner 4</label>
+                  <input id="c4" type="text" value="21.136780, 78.772560" autocomplete="off" spellcheck="false">
+                  <p class="hint" id="c4St" aria-live="polite"></p>
+                </div>
+              </div>
+              <p class="hint">Enter the corners in order around the plot, in either direction. Each box takes a pair, a degrees-minutes-seconds value or a full Google Maps link. The four corners start as an example plot.</p>
+              <p class="err" id="plotErr" role="alert"></p>
+              <dl style="margin-top:14px">
+                <div class="r"><dt>Centre of the plot</dt><dd class="n" id="pCen">—</dd></div>
+                <div class="r"><dt>Average of the four corners</dt><dd id="pAvg">—</dd></div>
+                <div class="r"><dt>Area</dt><dd id="pArea">—</dd></div>
+                <div class="r"><dt>Area in other units</dt><dd id="pArea2">—</dd></div>
+                <div class="r"><dt>Perimeter</dt><dd id="pPer">—</dd></div>
+                <div class="r"><dt>Longest side</dt><dd id="pLong">—</dd></div>
+                <div class="r"><dt>Shape check</dt><dd id="pShape">—</dd></div>
+              </dl>
+              <div class="row" style="margin-top:12px">
+                <button class="btn" id="plotLoc" type="button">Use the plot centre as the site location</button>
+                <a class="link" id="cenLink" href="https://www.google.com/maps" target="_blank" rel="noopener">Open centre in Google Maps</a>
+              </div>
+            </section>
+            <section>
+              <h2>Plot inside the 360° ring</h2>
+              <svg id="plotSvg" class="ringsvg" viewBox="0 0 480 480" role="img" aria-label="Plan of the plot inside a 360 degree ring, with the bearing of each corner from the centre"></svg>
+            </section>
+          </div>
+          <section>
+            <h2>Corners seen from the centre</h2>
+            <div class="tw"><table id="tblCorners"></table></div>
+            <h3>Sides, corner to corner</h3>
+            <div class="tw"><table id="tblSides"></table></div>
+            <p class="hint">Bearings run clockwise from true north. The compass bearing subtracts the declination set in the top bar. Distances and areas use a flat local grid, accurate to well under a centimetre per 100 m at plot scale.</p>
+          </section>
+        </div>
+
+        <!-- From a centre -->
+        <div class="view" id="v-centre" hidden>
+          <div class="cols">
+            <div class="view">
+              <section>
+                <h2>Square from four corners</h2>
+                <div class="fields">
+                  <div class="wide">
+                    <label for="q1">Corner A</label>
+                    <input id="q1" type="text" value="21.137372, 78.772065" autocomplete="off" spellcheck="false">
+                    <p class="hint" id="q1St" aria-live="polite"></p>
+                  </div>
+                  <div class="wide">
+                    <label for="q2">Corner B</label>
+                    <input id="q2" type="text" value="21.137372, 78.772837" autocomplete="off" spellcheck="false">
+                    <p class="hint" id="q2St" aria-live="polite"></p>
+                  </div>
+                  <div class="wide">
+                    <label for="q3">Corner C</label>
+                    <input id="q3" type="text" value="21.136652, 78.772837" autocomplete="off" spellcheck="false">
+                    <p class="hint" id="q3St" aria-live="polite"></p>
+                  </div>
+                  <div class="wide">
+                    <label for="q4">Corner D</label>
+                    <input id="q4" type="text" value="21.136652, 78.772065" autocomplete="off" spellcheck="false">
+                    <p class="hint" id="q4St" aria-live="polite"></p>
+                  </div>
+                  <div class="wide row">
+                    <button class="btn" id="qPlot" type="button">Use the four corners from Plot</button>
+                  </div>
+                </div>
+                <p class="hint">Enter the corners in order around the square, in either direction. Each box takes a pair, a degrees-minutes-seconds value or a full Google Maps link. The corners start as an 80 m (262 ft) square.</p>
+                <p class="err" id="sqErr" role="alert"></p>
+                <dl style="margin-top:14px">
+                  <div class="r"><dt>Centre of the square</dt><dd class="n" id="sqCen">—</dd></div>
+                  <div class="r"><dt>Area</dt><dd id="sqArea">—</dd></div>
+                  <div class="r"><dt>Points inside the square</dt><dd class="s" id="sqIn">—</dd></div>
+                </dl>
+              </section>
+              <section>
+                <h2>Centre and points</h2>
+                <div class="fields">
+                  <div class="wide">
+                    <label class="check" for="autoC"><input id="autoC" type="checkbox" checked> Measure from the centre of the square</label>
+                  </div>
+                  <div class="wide">
+                    <label for="cc">Centre point</label>
+                    <input id="cc" type="text" value="21.137012, 78.772451" autocomplete="off" spellcheck="false">
+                    <p class="hint" id="ccSt" aria-live="polite"></p>
+                  </div>
+                  <div class="wide">
+                    <label for="cp">Points to plot, one per line (up to 10)</label>
+                    <textarea id="cp" rows="10" spellcheck="false" autocomplete="off">21.137439, 78.772515
+21.137392, 78.772888
+21.137056, 78.772834
+21.136780, 78.772919
+21.136734, 78.772609
+21.136498, 78.772354
+21.136737, 78.772146
+21.136929, 78.771821
+21.137188, 78.772137
+21.137432, 78.772231</textarea>
+                    <p class="hint" id="cpSt" aria-live="polite"></p>
+                  </div>
+                </div>
+                <p class="hint">Each line takes a pair, a degrees-minutes-seconds value or a full Google Maps link. Untick the box above to type your own centre. Bearings run clockwise from true north, and the compass bearing subtracts the declination set in the top bar.</p>
+              </section>
+            </div>
+            <section>
+              <h2>Plan and degrees</h2>
+              <div class="vbar">
+                <div class="seg" role="radiogroup" aria-label="Drawing style">
+                  <label><input type="radio" name="cview" id="vPlan" checked><span>Plan</span></label>
+                  <label><input type="radio" name="cview" id="vRing"><span>360° ring</span></label>
+                </div>
+                <div class="zbar" role="group" aria-label="Zoom">
+                  <button class="btn zb" id="zOut" type="button" aria-label="Zoom out">−</button>
+                  <input id="zRange" type="range" min="-2" max="3" step="0.05" value="0" aria-label="Zoom level">
+                  <button class="btn zb" id="zIn" type="button" aria-label="Zoom in">+</button>
+                  <button class="btn" id="zFit" type="button">Fit</button>
+                  <output id="zLab" class="zlab" for="zRange">×1.00</output>
+                </div>
+              </div>
+              <div id="planWrap">
+                <svg id="planSvg" class="ringsvg wide" viewBox="0 0 600 500" role="img" aria-label="Plan of the square with its four corners and numbered points on a ruled grid. Tap a point to see its bearing from the centre."></svg>
+                <div class="legend">
+                  <span><i class="l-q"></i>Square</span>
+                  <span><i class="l-in"></i>Point inside</span>
+                  <span><i class="l-out"></i>Point outside</span>
+                  <span><i class="l-n"></i>True north</span>
+                  <label class="check" for="allLines" style="margin:0"><input id="allLines" type="checkbox"> Show every bearing line</label>
+                </div>
+                <div class="selinfo" id="selInfo" aria-live="polite"></div>
+                <h3 class="chh">Corners</h3>
+                <div class="chips" id="chipsC"></div>
+                <h3 class="chh">Points</h3>
+                <div class="chips" id="chipsP"></div>
+                <p class="hint">Tap a point, a corner, a chip or a table row to show its bearing line and angle from north. Distances on the grid are from the centre, measured in the unit set in the top bar.</p>
+              </div>
+              <div id="ringWrap" hidden>
+                <svg id="cenSvg" class="ringsvg" viewBox="0 0 480 480" role="img" aria-label="The square and points inside a 360 degree ring that shows the bearing of each point from the centre"></svg>
+                <div class="legend">
+                  <span><i class="l-q"></i>Square</span>
+                  <span><i class="l-in"></i>Point inside</span>
+                  <span><i class="l-out"></i>Point outside</span>
+                  <span><i class="l-d"></i>Grid squares match the scale bar</span>
+                </div>
+                <p class="hint">Zoom stays centred on the centre point. On a trackpad, pinch or hold Ctrl and scroll over the drawing. Points beyond the ring edge stay listed in the table and keep their bearing marker on the ring.</p>
+              </div>
+            </section>
+          </div>
+          <section>
+            <h2>Corners and points seen from the centre</h2>
+            <div class="tw"><table id="tblCen"></table></div>
+          </section>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="toast" id="gpsToast" role="status" hidden></div>
+<nav class="tabs" id="navTabs" aria-label="Sections"></nav>
+
+<script id="calc">
+/* Pure math. NOAA solar position algorithm and standard UTM grid convergence. */
+const RAD = Math.PI / 180;
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const mod = (x, m) => ((x % m) + m) % m;
+
+function solarPos(date, lat, lon) {
+  const jd = date.getTime() / 86400000 + 2440587.5;
+  const T = (jd - 2451545.0) / 36525;
+  const L0 = mod(280.46646 + T * (36000.76983 + T * 0.0003032), 360);
+  const M = 357.52911 + T * (35999.05029 - 0.0001537 * T);
+  const e = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
+  const C = Math.sin(M * RAD) * (1.914602 - T * (0.004817 + 0.000014 * T))
+          + Math.sin(2 * M * RAD) * (0.019993 - 0.000101 * T)
+          + Math.sin(3 * M * RAD) * 0.000289;
+  const omega = 125.04 - 1934.136 * T;
+  const lambda = L0 + C - 0.00569 - 0.00478 * Math.sin(omega * RAD);
+  const eps0 = 23 + (26 + (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60) / 60;
+  const eps = eps0 + 0.00256 * Math.cos(omega * RAD);
+  const decl = Math.asin(Math.sin(eps * RAD) * Math.sin(lambda * RAD)) / RAD;
+  const y = Math.tan(eps * RAD / 2) ** 2;
+  const eqTime = 4 / RAD * (y * Math.sin(2 * L0 * RAD) - 2 * e * Math.sin(M * RAD)
+    + 4 * e * y * Math.sin(M * RAD) * Math.cos(2 * L0 * RAD)
+    - 0.5 * y * y * Math.sin(4 * L0 * RAD) - 1.25 * e * e * Math.sin(2 * M * RAD));
+  const utcMin = date.getUTCHours() * 60 + date.getUTCMinutes() + date.getUTCSeconds() / 60 + date.getUTCMilliseconds() / 60000;
+  const tst = mod(utcMin + eqTime + 4 * lon, 1440);
+  const ha = tst / 4 - 180;
+  const phi = lat * RAD, d = decl * RAD, h = ha * RAD;
+  const cosZ = Math.sin(phi) * Math.sin(d) + Math.cos(phi) * Math.cos(d) * Math.cos(h);
+  const elev = 90 - Math.acos(clamp(cosZ, -1, 1)) / RAD;
+  const az = mod(Math.atan2(Math.sin(h), Math.cos(h) * Math.sin(phi) - Math.tan(d) * Math.cos(phi)) / RAD + 180, 360);
+  return { az, elev, decl, eqTime };
+}
+
+function solarNoon(date, lat, lon) {
+  let dayStart = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  let noon = dayStart + (720 - 4 * lon) * 60000;
+  for (let i = 0; i < 3; i++) {
+    const eq = solarPos(new Date(noon), lat, lon).eqTime;
+    noon = dayStart + (720 - 4 * lon - eq) * 60000;
+  }
+  const t = date.getTime();
+  if (noon - t > 43200000) dayStart -= 86400000;
+  else if (t - noon > 43200000) dayStart += 86400000;
+  noon = dayStart + (720 - 4 * lon) * 60000;
+  for (let i = 0; i < 3; i++) {
+    const eq = solarPos(new Date(noon), lat, lon).eqTime;
+    noon = dayStart + (720 - 4 * lon - eq) * 60000;
+  }
+  return new Date(noon);
+}
+
+function utmInfo(lat, lon) {
+  const zone = Math.floor((lon + 180) / 6) % 60 + 1;
+  const cm = (zone - 1) * 6 - 180 + 3;
+  const gamma = Math.atan(Math.tan((lon - cm) * RAD) * Math.sin(lat * RAD)) / RAD;
+  return { zone, cm, gamma };
+}
+
+function parseCoord(s) {
+  const t = String(s).trim().toUpperCase();
+  const m = t.match(/^(-?\d+(?:\.\d+)?)\s*°?\s*([NSEW])?$/);
+  if (!m) return NaN;
+  let v = parseFloat(m[1]);
+  if (m[2] === 'S' || m[2] === 'W') v = -Math.abs(v);
+  return v;
+}
+
+/* Reads what Google Maps gives you: decimal pair, degrees-minutes-seconds, or a maps URL. */
+function parseMaps(raw) {
+  let s = String(raw || '').trim();
+  if (!s) return { error: 'Paste coordinates or a Google Maps link.' };
+  if (/maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs/i.test(s)) {
+    return { error: 'Short links hide the coordinates. Open the link, then copy the full address from the browser bar, or copy the coordinates from the pin.' };
+  }
+  try { s = decodeURIComponent(s.replace(/\+/g, ' ')); } catch (e) { /* keep raw text */ }
+  const N = '(-?\\d+(?:\\.\\d+)?)';
+  const ok = (lat, lon, kind) => (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180)
+    ? { lat, lon, kind }
+    : { error: 'Those numbers are outside the valid range. Latitude must be within 90 degrees of the equator and longitude within 180 of Greenwich.' };
+  let m;
+  if (/^https?:\/\//i.test(s) || /google\.[a-z.]+\/maps/i.test(s)) {
+    if ((m = s.match(new RegExp('!3d' + N + '!4d' + N)))) return ok(+m[1], +m[2], 'the pin in a Google Maps link');
+    if ((m = s.match(new RegExp('@' + N + ',' + N)))) return ok(+m[1], +m[2], 'the map centre in a Google Maps link (the pin can sit slightly off-centre)');
+    if ((m = s.match(new RegExp('[?&](?:q|ll|query|center|destination|daddr)=' + N + '[,\\s]+' + N)))) return ok(+m[1], +m[2], 'a Google Maps link');
+    return { error: 'No coordinates found in that link. Click the spot on the map first, then copy the address from the browser bar.' };
+  }
+  const t = s.replace(/[′’‘`´]/g, "'").replace(/[″”“]/g, '"').replace(/''/g, '"').replace(/[º˚]/g, '°');
+  const dms = /(\d{1,3})\s*°\s*(\d{1,2})\s*'\s*(\d{1,2}(?:\.\d+)?)\s*"?\s*([NS])[\s,;]*(\d{1,3})\s*°\s*(\d{1,2})\s*'\s*(\d{1,2}(?:\.\d+)?)\s*"?\s*([EW])/i;
+  if ((m = t.match(dms))) {
+    let lat = +m[1] + m[2] / 60 + m[3] / 3600;
+    let lon = +m[5] + m[6] / 60 + m[7] / 3600;
+    if (/s/i.test(m[4])) lat = -lat;
+    if (/w/i.test(m[8])) lon = -lon;
+    return ok(lat, lon, 'degrees, minutes and seconds');
+  }
+  m = t.match(new RegExp('^' + N + '\\s*°?\\s*([NSns])?\\s*[,;\\s]\\s*' + N + '\\s*°?\\s*([EWew])?$'));
+  if (m) {
+    let lat = +m[1], lon = +m[3];
+    if (m[2] && /s/i.test(m[2])) lat = -Math.abs(lat);
+    if (m[4] && /w/i.test(m[4])) lon = -Math.abs(lon);
+    return ok(lat, lon, 'decimal degrees');
+  }
+  return { error: 'Could not read that. Use a pair like 21.136983, 78.772362, a value like 21°08\'13.1"N 78°46\'20.5"E, or a full Google Maps link.' };
+}
+
+/* Initial bearing (clockwise from true north) and great-circle distance from a to b. */
+function bearingDist(a, b) {
+  const p1 = a.lat * RAD, p2 = b.lat * RAD, dl = (b.lon - a.lon) * RAD;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  const brg = mod(Math.atan2(y, x) / RAD, 360);
+  const h = Math.sin((p2 - p1) / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  const dist = 2 * 6371008.8 * Math.asin(Math.min(1, Math.sqrt(h)));
+  return { brg, dist };
+}
+
+function quadrant(b) {
+  const e = 0.0005;
+  if (b < e || b > 360 - e) return 'Due north';
+  if (Math.abs(b - 90) < e) return 'Due east';
+  if (Math.abs(b - 180) < e) return 'Due south';
+  if (Math.abs(b - 270) < e) return 'Due west';
+  if (b < 90) return 'N ' + b.toFixed(3) + '° E';
+  if (b < 180) return 'S ' + (180 - b).toFixed(3) + '° E';
+  if (b < 270) return 'S ' + (b - 180).toFixed(3) + '° W';
+  return 'N ' + (360 - b).toFixed(3) + '° W';
+}
+
+function windName(b) {
+  const n = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  return n[Math.round(b / 22.5) % 16];
+}
+
+function dmsStr(d) {
+  let t = Math.round(d * 36000);
+  const dg = Math.floor(t / 36000); t -= dg * 36000;
+  const mi = Math.floor(t / 600); t -= mi * 600;
+  return dg + '°' + String(mi).padStart(2, '0') + "'" + (t / 10).toFixed(1).padStart(4, '0') + '"';
+}
+
+let unitFt = true;
+const FT = 3.280839895;
+function fmtDist(m) {
+  if (unitFt) {
+    const ft = m * FT;
+    return ft >= 5280 ? ft.toFixed(1) + ' ft (' + (ft / 5280).toFixed(3) + ' mi)' : ft.toFixed(2) + ' ft';
+  }
+  return m >= 1000 ? m.toFixed(1) + ' m (' + (m / 1000).toFixed(3) + ' km)' : m.toFixed(2) + ' m';
+}
+
+/* Four-corner plot: centre, area, side bearings, corner bearings and interior angles.
+   Uses a flat local grid in metres around the average of the corners. */
+function plotGeometry(pts, D) {
+  const n = pts.length, R = 6371008.8;
+  const lat0 = pts.reduce((s, p) => s + p.lat, 0) / n;
+  const lon0 = pts.reduce((s, p) => s + p.lon, 0) / n;
+  const k = R * Math.cos(lat0 * RAD) * RAD;
+  const xy = pts.map((p) => ({ x: (p.lon - lon0) * k, y: (p.lat - lat0) * R * RAD }));
+  const cross = (a, b) => a.x * b.y - a.y * b.x;
+  const sub = (a, b) => ({ x: a.x - b.x, y: a.y - b.y });
+  let A2 = 0, cx = 0, cy = 0;
+  for (let i = 0; i < n; i++) {
+    const a = xy[i], b = xy[(i + 1) % n], c = cross(a, b);
+    A2 += c; cx += (a.x + b.x) * c; cy += (a.y + b.y) * c;
+  }
+  const side = (p, q, r) => cross(sub(q, p), sub(r, p));
+  const crosses = (a, b, c, d) => side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0;
+  if (crosses(xy[0], xy[1], xy[2], xy[3]) || crosses(xy[1], xy[2], xy[3], xy[0])) {
+    return { error: 'The sides cross each other. Enter the corners in order around the plot, not diagonally.' };
+  }
+  if (Math.abs(A2) < 1e-6) return { error: 'The four corners lie on one line, so there is no plot area. Check the coordinates.' };
+  const sgn = A2 > 0 ? 1 : -1;
+  const cen = { x: cx / (3 * A2), y: cy / (3 * A2) };
+  const centre = { lat: lat0 + cen.y / (R * RAD), lon: lon0 + cen.x / k };
+  const sides = [], corners = [], angles = [];
+  let perimeter = 0;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n];
+    const r = bearingDist(a, b);
+    perimeter += r.dist;
+    sides.push({ brg: r.brg, dist: r.dist, mag: mod(r.brg - D, 360) });
+    const c = bearingDist(centre, a);
+    corners.push({ brg: c.brg, dist: c.dist, mag: mod(c.brg - D, 360) });
+    const prev = xy[(i + n - 1) % n], cur = xy[i], next = xy[(i + 1) % n];
+    const v1 = sub(prev, cur), v2 = sub(next, cur);
+    let ang = Math.atan2(Math.abs(cross(v1, v2)), v1.x * v2.x + v1.y * v2.y) / RAD;
+    if (cross(sub(cur, prev), sub(next, cur)) * sgn < 0) ang = 360 - ang;
+    angles.push(ang);
+  }
+  let longest = 0;
+  sides.forEach((s, i) => { if (s.dist > sides[longest].dist) longest = i; });
+  return {
+    area: Math.abs(A2) / 2, perimeter, centre, avg: { lat: lat0, lon: lon0 },
+    xy, cen, sides, corners, angles, angleSum: angles.reduce((a, b) => a + b, 0), longest
+  };
+}
+</script>
+
+<script id="ui">
+const $ = (id) => document.getElementById(id);
+const pad = (n) => String(n).padStart(2, '0');
+const f3 = (n) => n.toFixed(3);
+const deg = (n, d = 3) => n.toFixed(d) + '°';
+
+function toLocalInput(d) {
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+function clock(d) {
+  return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+}
+
+/* Dial ticks and numerals */
+(function buildDial() {
+  const ticks = $('ticks'), nums = $('nums');
+  let t = '', n = '';
+  for (let a = 0; a < 360; a += 5) {
+    const major = a % 30 === 0;
+    const r1 = 150, r2 = major ? 136 : 143;
+    const x1 = 200 + r1 * Math.sin(a * RAD), y1 = 200 - r1 * Math.cos(a * RAD);
+    const x2 = 200 + r2 * Math.sin(a * RAD), y2 = 200 - r2 * Math.cos(a * RAD);
+    t += '<line class="tick' + (major ? ' maj' : '') + '" x1="' + x1.toFixed(2) + '" y1="' + y1.toFixed(2) + '" x2="' + x2.toFixed(2) + '" y2="' + y2.toFixed(2) + '"></line>';
+    if (major && a % 90 !== 0) {
+      const rx = 200 + 122 * Math.sin(a * RAD), ry = 200 - 122 * Math.cos(a * RAD);
+      n += '<text class="dlabel" x="' + rx.toFixed(1) + '" y="' + ry.toFixed(1) + '">' + a + '</text>';
+    }
+  }
+  ticks.innerHTML = t;
+  nums.innerHTML = n;
+})();
+
+let live = true;
+let lastText = '';
+
+function setRot(id, a) { $(id).setAttribute('transform', 'rotate(' + a.toFixed(3) + ' 200 200)'); }
+
+function update() {
+  const err = $('err');
+  const lat = parseCoord($('lat').value), lon = parseCoord($('lon').value);
+  if (!(lat >= -90 && lat <= 90) || !(lon >= -180 && lon <= 180)) {
+    err.textContent = 'Enter latitude between -90 and 90 and longitude between -180 and 180, in decimal degrees.';
+    return;
+  }
+  let date;
+  if (live) {
+    date = new Date();
+    if (document.activeElement !== $('when')) $('when').value = toLocalInput(date);
+  } else {
+    date = new Date($('when').value);
+  }
+  if (isNaN(date.getTime())) { err.textContent = 'Enter a valid date and time.'; return; }
+  err.textContent = '';
+  $('gmLink').href = 'https://www.google.com/maps?q=' + lat + ',' + lon;
+  const D = parseFloat($('decl').value) || 0;
+
+  /* reference lines */
+  const cN = mod(-D, 360), cS = mod(180 - D, 360);
+  $('cN').textContent = deg(cN, 2);
+  $('cS').textContent = deg(cS, 2);
+  const u = utmInfo(lat, lon);
+  $('gridB').textContent = deg(-u.gamma, 3);
+  $('utm').textContent = u.zone + (lat >= 0 ? 'N' : 'S') + ' / ' + u.cm + '°E';
+
+  /* sun now */
+  const p = solarPos(date, lat, lon);
+  const shadowB = mod(p.az + 180, 360);
+  $('az').textContent = deg(p.az);
+  $('el').textContent = deg(p.elev);
+  let diff = mod(0 - shadowB + 540, 360) - 180;
+  let note;
+  if (p.elev <= 0) {
+    $('shb').textContent = 'Sun below horizon';
+    note = 'The sun is below the horizon at this time, so there is no shadow to use. Pick a time between sunrise and sunset.';
+  } else {
+    $('shb').textContent = deg(shadowB);
+    if (Math.abs(diff) < 0.0005) {
+      note = 'The shadow lies on the true north-south line right now.';
+    } else {
+      note = 'Draw the shadow line, then turn it ' + Math.abs(diff).toFixed(2) + '° ' + (diff > 0 ? 'clockwise' : 'anticlockwise') + ' (seen from above) to get the true north line.';
+    }
+    if (p.elev < 10) note += ' The sun is low, so the reading is less precise. Mid-morning to mid-afternoon works best.';
+  }
+  $('shNote').textContent = note;
+
+  /* solar noon */
+  const noon = solarNoon(date, lat, lon);
+  const pn = solarPos(noon, lat, lon);
+  $('noon').textContent = clock(noon);
+  $('noonAz').textContent = deg(pn.az);
+  $('noonEl').textContent = deg(pn.elev);
+  $('noonSh').textContent = pn.elev > 0
+    ? (unitFt ? (FT / Math.tan(pn.elev * RAD)).toFixed(2) + ' ft' : (1 / Math.tan(pn.elev * RAD)).toFixed(3) + ' m')
+    : 'no shadow';
+  const tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || 'device time zone';
+  const pointsNorth = pn.az > 90 && pn.az < 270;
+  $('noonHint').textContent = 'Times shown in ' + tz + '. At solar noon the shortest shadow points true ' + (pointsNorth ? 'north' : 'south') + '.';
+
+  /* converter */
+  const mb = parseFloat($('mb').value);
+  $('tb').value = isNaN(mb) ? '' : mod(mb + D, 360).toFixed(2) + '°';
+
+  /* dial */
+  setRot('gSun', p.az);
+  setRot('gMag', D);
+  const L = p.elev > 0 ? Math.min(140, 28 + 50 / Math.max(Math.tan(p.elev * RAD), 0.2)) : 0;
+  $('shLine').setAttribute('y2', (200 - L).toFixed(1));
+  setRot('gShadow', shadowB);
+  $('gShadow').style.display = p.elev > 0 ? '' : 'none';
+  $('gSun').style.opacity = p.elev > 0 ? '1' : '0.35';
+
+  /* two points */
+  let pointsText = '';
+  const lineG = $('gLine');
+  const dash = (ids) => ids.forEach((id) => { $(id).textContent = '—'; });
+  lineG.style.display = 'none';
+  if (ptA && ptB) {
+    const r = bearingDist(ptA, ptB);
+    if (r.dist < 0.001) {
+      dash(['quad', 'brgDms', 'brgBack', 'brgMag', 'dist']);
+      $('brg').textContent = 'Same point';
+    } else {
+      const back = bearingDist(ptB, ptA).brg;
+      $('brg').textContent = deg(r.brg) + ' (' + windName(r.brg) + ')';
+      $('quad').textContent = quadrant(r.brg);
+      $('brgDms').textContent = dmsStr(r.brg);
+      $('brgBack').textContent = deg(back);
+      $('brgMag').textContent = deg(mod(r.brg - D, 360));
+      $('dist').textContent = fmtDist(r.dist);
+      setRot('gLine', r.brg);
+      lineG.style.display = '';
+      pointsText = '\nPoint A: ' + ptA.lat.toFixed(6) + ', ' + ptA.lon.toFixed(6)
+        + '\nPoint B: ' + ptB.lat.toFixed(6) + ', ' + ptB.lon.toFixed(6)
+        + '\nTrue bearing A to B: ' + r.brg.toFixed(3) + ' deg (' + quadrant(r.brg) + '), B to A: ' + back.toFixed(3) + ' deg'
+        + '\nCompass bearing A to B: ' + mod(r.brg - D, 360).toFixed(3) + ' deg'
+        + '\nDistance: ' + fmtDist(r.dist);
+    }
+  } else {
+    dash(['brg', 'quad', 'brgDms', 'brgBack', 'brgMag', 'dist']);
+  }
+
+  lastText = [
+    'True North Finder',
+    'Location: ' + lat.toFixed(6) + ', ' + lon.toFixed(6),
+    'Time: ' + date.toString(),
+    'True north: 0.000 deg, true south: 180.000 deg',
+    'Declination used: ' + D.toFixed(2) + ' deg E. Compass shows true north at ' + cN.toFixed(2) + ' deg and true south at ' + cS.toFixed(2) + ' deg',
+    'UTM grid bearing of true north: ' + (-u.gamma).toFixed(3) + ' deg (zone ' + u.zone + ')',
+    'Sun azimuth: ' + p.az.toFixed(3) + ' deg, elevation: ' + p.elev.toFixed(3) + ' deg',
+    'Solar noon: ' + clock(noon) + ' (' + tz + ')'
+  ].join('\n') + pointsText;
+}
+
+['lat', 'lon', 'decl', 'mb'].forEach((id) => $(id).addEventListener('input', update));
+const numStr = (n) => String(Number(n.toFixed(7)));
+
+function applyMaps(txt, report) {
+  const st = $('gmStatus');
+  const r = parseMaps(txt);
+  if (r.error) {
+    if (report) { st.className = 'err'; st.textContent = r.error; }
+    return false;
+  }
+  $('lat').value = numStr(r.lat);
+  $('lon').value = numStr(r.lon);
+  st.className = 'okmsg';
+  st.textContent = 'Read ' + numStr(r.lat) + ', ' + numStr(r.lon) + ' from ' + r.kind + '.';
+  update();
+  return true;
+}
+
+$('gm').addEventListener('input', () => {
+  if (!$('gm').value.trim()) {
+    $('gmStatus').className = 'hint';
+    $('gmStatus').textContent = 'Accepts decimal degrees, degrees-minutes-seconds and full Google Maps links.';
+    return;
+  }
+  applyMaps($('gm').value, false);
+});
+$('gm').addEventListener('change', () => { if ($('gm').value.trim()) applyMaps($('gm').value, true); });
+['lat', 'lon'].forEach((id) => $(id).addEventListener('paste', (e) => {
+  const txt = (e.clipboardData && e.clipboardData.getData('text')) || '';
+  if (!parseMaps(txt).error) {
+    e.preventDefault();
+    $('gm').value = txt.trim();
+    applyMaps(txt, true);
+  }
+}));
+
+/* Two-point direction */
+let ptA = null, ptB = null;
+function readPoint(id, report) {
+  const st = $(id + 'St');
+  const r = parseMaps($(id).value);
+  if (r.error) {
+    if (report) { st.className = 'err'; st.textContent = r.error; }
+    return null;
+  }
+  st.className = 'okmsg';
+  st.textContent = 'Read ' + numStr(r.lat) + ', ' + numStr(r.lon) + ' from ' + r.kind + '.';
+  return { lat: r.lat, lon: r.lon };
+}
+function updatePoints(report) {
+  ptA = readPoint('pa', report);
+  ptB = readPoint('pb', report);
+  update();
+}
+['pa', 'pb'].forEach((id) => {
+  $(id).addEventListener('input', () => updatePoints(false));
+  $(id).addEventListener('change', () => updatePoints(true));
+});
+$('useLoc').addEventListener('click', () => {
+  const la = parseCoord($('lat').value), lo = parseCoord($('lon').value);
+  if (isNaN(la) || isNaN(lo)) return;
+  $('pa').value = numStr(la) + ', ' + numStr(lo);
+  updatePoints(true);
+});
+$('swap').addEventListener('click', () => {
+  const t = $('pa').value;
+  $('pa').value = $('pb').value;
+  $('pb').value = t;
+  updatePoints(true);
+});
+
+/* Plot from four corners */
+let plotPts = null;
+let plotCentre = null;
+const fmtN = (n, d) => n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+const lenStr = (m, d) => unitFt ? fmtN(m * FT, d) + ' ft' : fmtN(m, d) + ' m';
+
+function readPlot(report) {
+  const pts = ['c1', 'c2', 'c3', 'c4'].map((id) => readPoint(id, report));
+  plotPts = pts.every(Boolean) ? pts : null;
+  renderPlot();
+}
+
+/* Shared pieces of the 360 degree ring drawings (plot and centre-point views). */
+const CX = 240, CY = 240, RR = 180, FIT = 92;
+const pol = (r, a) => ({ x: CX + r * Math.sin(a * RAD), y: CY - r * Math.cos(a * RAD) });
+const fx = (v) => v.toFixed(1);
+
+function ringSvg() {
+  let o = '<circle class="ring" cx="' + CX + '" cy="' + CY + '" r="' + RR + '"></circle>';
+  for (let a = 0; a < 360; a += 5) {
+    const major = a % 30 === 0, mid = a % 10 === 0;
+    const p1 = pol(RR, a), p2 = pol(RR - (major ? 15 : mid ? 9 : 5), a);
+    o += '<line class="tick' + (major ? ' maj' : '') + '" x1="' + fx(p1.x) + '" y1="' + fx(p1.y) + '" x2="' + fx(p2.x) + '" y2="' + fx(p2.y) + '"></line>';
+  }
+  const names = { 0: 'N', 90: 'E', 180: 'S', 270: 'W' };
+  for (let a = 0; a < 360; a += 30) {
+    const nm = names[a];
+    const p = pol(nm ? 203 : 197, a);
+    o += nm
+      ? '<text class="card' + (a === 0 ? ' nn' : '') + '" x="' + fx(p.x) + '" y="' + fx(p.y) + '">' + nm + '</text>'
+      : '<text class="dlabel" x="' + fx(p.x) + '" y="' + fx(p.y) + '">' + a + '</text>';
+  }
+  return o;
+}
+
+function spokesSvg(brgs) {
+  return brgs.map((b) => {
+    if (b == null) return '';
+    const e = pol(RR, b);
+    return '<line class="spoke" x1="' + CX + '" y1="' + CY + '" x2="' + fx(e.x) + '" y2="' + fx(e.y) + '"></line>';
+  }).join('');
+}
+
+function marksSvg(brgs, cls) {
+  return brgs.map((b, i) => {
+    if (b == null) return '';
+    const m = pol(RR, b), t = pol(142, b);
+    return '<circle class="pdot' + (cls && cls[i] ? ' ' + cls[i] : '') + '" cx="' + fx(m.x) + '" cy="' + fx(m.y) + '" r="10"></circle>'
+      + '<text class="pmk" x="' + fx(m.x) + '" y="' + fx(m.y) + '">' + (i + 1) + '</text>'
+      + '<text class="pdeg" x="' + fx(t.x) + '" y="' + fx(t.y) + '">' + b.toFixed(1) + '°</text>';
+  }).join('');
+}
+
+function centreSvg() {
+  return '<circle class="cenc" cx="' + CX + '" cy="' + CY + '" r="7"></circle>'
+    + '<line class="cenx" x1="' + (CX - 11) + '" y1="' + CY + '" x2="' + (CX + 11) + '" y2="' + CY + '"></line>'
+    + '<line class="cenx" x1="' + CX + '" y1="' + (CY - 11) + '" x2="' + CX + '" y2="' + (CY + 11) + '"></line>';
+}
+
+function scaleSvg(s) {
+  const nice = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+  const perUnit = unitFt ? FT : 1;
+  const target = 110 / s * perUnit;
+  let len = nice[0];
+  nice.forEach((v) => { if (v <= target) len = v; });
+  const lp = len / perUnit * s, sx = 14, sy = 466;
+  return '<line class="pscale" x1="' + sx + '" y1="' + sy + '" x2="' + fx(sx + lp) + '" y2="' + sy + '"></line>'
+    + '<line class="pscale" x1="' + sx + '" y1="' + (sy - 5) + '" x2="' + sx + '" y2="' + (sy + 5) + '"></line>'
+    + '<line class="pscale" x1="' + fx(sx + lp) + '" y1="' + (sy - 5) + '" x2="' + fx(sx + lp) + '" y2="' + (sy + 5) + '"></line>'
+    + '<text class="pdim" x="' + fx(sx + lp / 2) + '" y="' + (sy - 12) + '">' + len + (unitFt ? ' ft' : ' m') + '</text>';
+}
+
+function drawPlot(g) {
+  const rel = g.xy.map((p) => ({ x: p.x - g.cen.x, y: p.y - g.cen.y }));
+  const far = Math.max(...rel.map((p) => Math.hypot(p.x, p.y)), 1e-6);
+  const s = FIT / far;
+  const P = rel.map((p) => ({ x: CX + p.x * s, y: CY - p.y * s }));
+  const brgs = g.corners.map((c) => c.brg);
+  let o = ringSvg() + spokesSvg(brgs);
+  o += '<polygon class="pfill" points="' + P.map((p) => fx(p.x) + ',' + fx(p.y)).join(' ') + '"></polygon>';
+  g.sides.forEach((sd, i) => {
+    const a = P[i], b = P[(i + 1) % P.length];
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const dx = mx - CX, dy = my - CY, d = Math.hypot(dx, dy) || 1;
+    o += '<text class="pdim" x="' + fx(mx + dx / d * 17) + '" y="' + fx(my + dy / d * 11) + '">' + lenStr(sd.dist, 1) + '</text>';
+  });
+  P.forEach((p, i) => {
+    const dx = p.x - CX, dy = p.y - CY, d = Math.hypot(dx, dy) || 1;
+    o += '<circle class="pdot" cx="' + fx(p.x) + '" cy="' + fx(p.y) + '" r="5.5"></circle>';
+    o += '<text class="pnum" x="' + fx(p.x + dx / d * 15) + '" y="' + fx(p.y + dy / d * 15) + '">' + (i + 1) + '</text>';
+  });
+  o += marksSvg(brgs) + centreSvg() + scaleSvg(s);
+  $('plotSvg').innerHTML = o;
+}
+
+/* From a centre: a square made from four corner coordinates, up to ten points plotted on it,
+   the bearing of every point from the centre, and a zoomable plan inside the 360 degree ring. */
+const FITC = 118, CLIPR = 135, ZMIN = 0.25, ZMAX = 8;
+let zoomC = 1, cenData = null;
+
+function niceLen(s) {
+  const nice = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+  const perUnit = unitFt ? FT : 1;
+  const target = 110 / s * perUnit;
+  let len = nice[0];
+  nice.forEach((v) => { if (v <= target) len = v; });
+  return { len, px: len / perUnit * s };
+}
+
+function gridSvg(px, R) {
+  const n = Math.min(14, Math.floor(R / px));
+  let o = '';
+  for (let k = -n; k <= n; k++) {
+    const x = CX + k * px, y = CY + k * px, ax = k === 0 ? ' ax' : '';
+    o += '<line class="gridl' + ax + '" x1="' + fx(x) + '" y1="' + (CY - R) + '" x2="' + fx(x) + '" y2="' + (CY + R) + '"></line>';
+    o += '<line class="gridl' + ax + '" x1="' + (CX - R) + '" y1="' + fx(y) + '" x2="' + (CX + R) + '" y2="' + fx(y) + '"></line>';
+  }
+  return o;
+}
+
+function inPoly(x, y, poly) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i], b = poly[j];
+    if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) c = !c;
+  }
+  return c;
+}
+
+function drawCentre() {
+  const d = cenData;
+  if (!d) { $('cenSvg').innerHTML = ringSvg() + centreSvg(); return; }
+  const all = d.items.concat(d.corners);
+  const far = Math.max(...all.map((p) => Math.hypot(p.x, p.y)), 1);
+  const s = FITC / far * zoomC;
+  const P = (p) => ({ x: CX + p.x * s, y: CY - p.y * s });
+  const out = (p, r) => {
+    const dx = p.x - CX, dy = p.y - CY, m = Math.hypot(dx, dy);
+    return m < 1 ? { x: p.x, y: p.y - r } : { x: p.x + dx / m * r, y: p.y + dy / m * r };
+  };
+  const nl = niceLen(s);
+  const letters = ['A', 'B', 'C', 'D'];
+  let o = ringSvg();
+  o += '<defs><clipPath id="cenClip"><circle cx="' + CX + '" cy="' + CY + '" r="' + CLIPR + '"></circle></clipPath></defs>';
+  o += '<g clip-path="url(#cenClip)">' + gridSvg(nl.px, CLIPR);
+  if (d.corners.length === 4) {
+    const Q = d.corners.map(P);
+    o += '<polygon class="pfill" points="' + Q.map((p) => fx(p.x) + ',' + fx(p.y)).join(' ') + '"></polygon>';
+  }
+  o += '</g>';
+  const brgs = d.items.map((p) => (p.same ? null : p.brg));
+  o += spokesSvg(brgs);
+  o += '<g clip-path="url(#cenClip)">';
+  d.corners.forEach((c, i) => {
+    const q = P(c), t = out(q, 15);
+    o += '<rect class="qdot" x="' + fx(q.x - 5) + '" y="' + fx(q.y - 5) + '" width="10" height="10" rx="2"></rect>';
+    o += '<text class="pnum" x="' + fx(t.x) + '" y="' + fx(t.y) + '">' + letters[i] + '</text>';
+  });
+  d.items.forEach((p, i) => {
+    const q = P(p), t = out(q, 15);
+    o += '<circle class="pdot ' + (p.inside ? 'pin' : 'pout') + '" cx="' + fx(q.x) + '" cy="' + fx(q.y) + '" r="5.5"></circle>';
+    o += '<text class="pnum" x="' + fx(t.x) + '" y="' + fx(t.y) + '">' + (i + 1) + '</text>';
+  });
+  o += '</g>';
+  d.corners.forEach((c, i) => {
+    const m = pol(RR, c.brg);
+    o += '<rect class="qdot" x="' + fx(m.x - 8) + '" y="' + fx(m.y - 8) + '" width="16" height="16" rx="3"></rect>'
+      + '<text class="pmk" x="' + fx(m.x) + '" y="' + fx(m.y) + '">' + letters[i] + '</text>';
+  });
+  o += marksSvg(brgs, d.items.map((p) => (p.inside ? 'pin' : 'pout'))) + centreSvg() + scaleSvg(s);
+  $('cenSvg').innerHTML = o;
+}
+
+function setZoom(z) {
+  zoomC = Math.min(ZMAX, Math.max(ZMIN, z));
+  $('zRange').value = Math.log2(zoomC).toFixed(3);
+  $('zLab').textContent = '×' + zoomC.toFixed(2);
+  redrawCentre();
+}
+
+function renderCentre(report) {
+  const D = parseFloat($('decl').value) || 0;
+  const auto = $('autoC').checked;
+
+  /* the square */
+  const qpts = ['q1', 'q2', 'q3', 'q4'].map((id) => readPoint(id, report));
+  let g = null;
+  $('sqErr').textContent = '';
+  if (qpts.every(Boolean)) {
+    const r = plotGeometry(qpts, D);
+    if (r.error) $('sqErr').textContent = r.error; else g = r;
+  }
+  if (g && auto) $('cc').value = numStr(g.centre.lat) + ', ' + numStr(g.centre.lon);
+  $('cc').readOnly = auto && !!g;
+  ['sqCen', 'sqArea', 'sqIn'].forEach((id) => { $(id).textContent = '—'; });
+
+  /* the centre */
+  const cst = $('ccSt'), pst = $('cpSt');
+  const c = parseMaps($('cc').value);
+  if (c.error) {
+    if (report) { cst.className = 'err'; cst.textContent = c.error; }
+    $('tblCen').innerHTML = '';
+    cenData = null;
+    redrawCentre();
+    return;
+  }
+  cst.className = 'okmsg';
+  cst.textContent = (auto && g ? 'Centre of the square: ' : 'Read ') + numStr(c.lat) + ', ' + numStr(c.lon) + (auto && g ? '.' : ' from ' + c.kind + '.');
+  const R = 6371008.8, k = R * Math.cos(c.lat * RAD) * RAD;
+  const rel = (r) => ({ x: (r.lon - c.lon) * k, y: (r.lat - c.lat) * R * RAD });
+  const from = { lat: c.lat, lon: c.lon };
+
+  const corners = g ? qpts.map((q) => {
+    const bd = bearingDist(from, q);
+    return Object.assign({ lat: q.lat, lon: q.lon, brg: bd.brg, dist: bd.dist }, rel(q));
+  }) : [];
+  const poly = corners.map((q) => ({ x: q.x, y: q.y }));
+
+  /* the points */
+  const items = [], bad = [];
+  let total = 0;
+  $('cp').value.split(/\r?\n/).forEach((line, i) => {
+    if (!line.trim()) return;
+    total++;
+    if (total > 10) return;
+    const r = parseMaps(line);
+    if (r.error) { bad.push(i + 1); return; }
+    const bd = bearingDist(from, r);
+    const xy = rel(r);
+    items.push({
+      lat: r.lat, lon: r.lon, brg: bd.brg, dist: bd.dist, same: bd.dist < 0.001, x: xy.x, y: xy.y,
+      inside: poly.length === 4 ? inPoly(xy.x, xy.y, poly) : false
+    });
+  });
+  pst.className = bad.length && report ? 'err' : 'okmsg';
+  pst.textContent = total
+    ? 'Read ' + items.length + ' of ' + Math.min(total, 10) + ' lines.' + (total > 10 ? ' Only the first 10 are used.' : '') + (bad.length ? ' Could not read line ' + bad.join(', ') + '. Use a pair like 21.1374, 78.7729 or a Google Maps link.' : '')
+    : 'Add one point per line.';
+
+  if (g) {
+    $('sqCen').textContent = g.centre.lat.toFixed(6) + ', ' + g.centre.lon.toFixed(6);
+    $('sqArea').textContent = unitFt ? fmtN(g.area * 10.7639104, 1) + ' sq ft' : fmtN(g.area, 2) + ' m²';
+    $('sqIn').textContent = items.filter((p) => p.inside).length + ' of ' + items.length + ' points';
+  }
+
+  /* the table: corners first, then points */
+  const D2 = (b) => deg(mod(b - D, 360));
+  const letters = ['A', 'B', 'C', 'D'];
+  const row = (name, p, tag, cls, k, i) => '<tr class="clk" data-k="' + k + '" data-i="' + i + '"><td>' + name + '</td><td>' + p.lat.toFixed(6) + ', ' + p.lon.toFixed(6) + '</td>'
+    + (p.same
+      ? '<td colspan="3">Same as the centre</td><td>' + lenStr(0, 2) + '</td>'
+      : '<td>' + deg(p.brg) + ' (' + windName(p.brg) + ')</td><td>' + quadrant(p.brg) + '</td><td>' + D2(p.brg) + '</td><td>' + lenStr(p.dist, 2) + '</td>')
+    + '<td><span class="tag ' + cls + '">' + tag + '</span></td></tr>';
+  let h = '<thead><tr><th>Item</th><th>Coordinates</th><th>Bearing from centre</th><th>N-S angle</th><th>Compass bearing</th><th>Distance</th><th>Position</th></tr></thead><tbody>';
+  corners.forEach((q, i) => { h += row('Corner ' + letters[i], q, 'Corner', 'cor', 'c', i); });
+  items.forEach((p, i) => { h += row('Point ' + (i + 1), p, poly.length === 4 ? (p.inside ? 'Inside' : 'Outside') : '—', poly.length === 4 ? (p.inside ? 'in' : 'out') : 'cor', 'p', i); });
+  $('tblCen').innerHTML = (items.length || corners.length) ? h + '</tbody>' : '';
+
+  cenData = { items, corners };
+  redrawCentre();
+}
+
+/* Plan drawing: the plot to scale on a ruled grid. Only the selected point shows its bearing line and angle arc,
+   so ten points stay readable. Every degree is listed in the chips beside the map. */
+const FX0 = 50, FY0 = 12, FX1 = 586, FY1 = 452;
+const MCX = (FX0 + FX1) / 2, MCY = (FY0 + FY1) / 2;
+let sel = { k: 'p', i: 0 };
+const LET = ['A', 'B', 'C', 'D'];
+
+function selItem() {
+  const d = cenData;
+  if (!d) return null;
+  const arr = sel.k === 'c' ? d.corners : d.items;
+  if (arr[sel.i]) return { p: arr[sel.i], name: sel.k === 'c' ? 'Corner ' + LET[sel.i] : 'Point ' + (sel.i + 1) };
+  if (d.items.length) { sel = { k: 'p', i: 0 }; return selItem(); }
+  if (d.corners.length) { sel = { k: 'c', i: 0 }; return selItem(); }
+  return null;
+}
+
+function drawPlan() {
+  const d = cenData, svg = $('planSvg');
+  if (!d || (!d.items.length && !d.corners.length)) {
+    svg.innerHTML = '<text class="mtick" x="300" y="230">Enter the four corners and some points to see the plan.</text>';
+    return;
+  }
+  const si = selItem();
+  const all = d.items.concat(d.corners);
+  const mx = Math.max(...all.map((p) => Math.abs(p.x)), 1), my = Math.max(...all.map((p) => Math.abs(p.y)), 1);
+  const s = Math.min(((FX1 - FX0) / 2 - 50) / mx, ((FY1 - FY0) / 2 - 46) / my) * zoomC;
+  const P = (p) => ({ x: MCX + p.x * s, y: MCY - p.y * s });
+  const nl = niceLen(s);
+  const unit = unitFt ? 'ft' : 'm';
+  const out = (a, b, r) => {
+    const dx = a.x - b.x, dy = a.y - b.y, m = Math.hypot(dx, dy) || 1;
+    return { x: a.x + dx / m * r, y: a.y + dy / m * r };
+  };
+  let grid = '', ticks = '';
+  const nxl = Math.floor((MCX - FX0) / nl.px), nxr = Math.floor((FX1 - MCX) / nl.px);
+  for (let k = -nxl; k <= nxr; k++) {
+    const x = MCX + k * nl.px;
+    grid += '<line class="gridl' + (k === 0 ? ' ax' : '') + '" x1="' + fx(x) + '" y1="' + FY0 + '" x2="' + fx(x) + '" y2="' + FY1 + '"></line>';
+    ticks += '<text class="mtick" x="' + fx(x) + '" y="' + (FY1 + 17) + '">' + (k * nl.len) + '</text>';
+  }
+  const nyu = Math.floor((MCY - FY0) / nl.px), nyd = Math.floor((FY1 - MCY) / nl.px);
+  for (let k = -nyd; k <= nyu; k++) {
+    const y = MCY - k * nl.px;
+    grid += '<line class="gridl' + (k === 0 ? ' ax' : '') + '" x1="' + FX0 + '" y1="' + fx(y) + '" x2="' + FX1 + '" y2="' + fx(y) + '"></line>';
+    ticks += '<text class="mtick y" x="' + (FX0 - 8) + '" y="' + fx(y) + '">' + (k * nl.len) + '</text>';
+  }
+
+  let o = '<defs><clipPath id="planClip"><rect x="' + FX0 + '" y="' + FY0 + '" width="' + (FX1 - FX0) + '" height="' + (FY1 - FY0) + '"></rect></clipPath></defs>';
+  o += '<rect class="mframe" x="' + FX0 + '" y="' + FY0 + '" width="' + (FX1 - FX0) + '" height="' + (FY1 - FY0) + '"></rect>';
+  o += '<g clip-path="url(#planClip)">' + grid;
+
+  const C = { x: MCX, y: MCY };
+  if (d.corners.length === 4) {
+    const Q = d.corners.map(P);
+    o += '<polygon class="pfill" points="' + Q.map((q) => fx(q.x) + ',' + fx(q.y)).join(' ') + '"></polygon>';
+    o += '<line class="diag" x1="' + fx(Q[0].x) + '" y1="' + fx(Q[0].y) + '" x2="' + fx(Q[2].x) + '" y2="' + fx(Q[2].y) + '"></line>';
+    o += '<line class="diag" x1="' + fx(Q[1].x) + '" y1="' + fx(Q[1].y) + '" x2="' + fx(Q[3].x) + '" y2="' + fx(Q[3].y) + '"></line>';
+    for (let i = 0; i < 4; i++) {
+      const a = Q[i], b = Q[(i + 1) % 4], ca = d.corners[i], cb = d.corners[(i + 1) % 4];
+      const m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const t = out(m, C, 14);
+      let ang = Math.atan2(b.y - a.y, b.x - a.x) / RAD;
+      if (ang > 90 || ang < -90) ang += 180;
+      o += '<text class="sidelab" transform="rotate(' + fx(ang) + ' ' + fx(t.x) + ' ' + fx(t.y) + ')" x="' + fx(t.x) + '" y="' + fx(t.y) + '">' + lenStr(Math.hypot(ca.x - cb.x, ca.y - cb.y), 1) + '</text>';
+    }
+  }
+  if ($('allLines').checked) {
+    d.items.forEach((p) => {
+      if (p.same) return;
+      const q = P(p);
+      o += '<line class="spoke" x1="' + MCX + '" y1="' + MCY + '" x2="' + fx(q.x) + '" y2="' + fx(q.y) + '"></line>';
+    });
+  }
+
+  /* the selected bearing: north reference, line, and angle arc */
+  let arcLab = '';
+  o += '<line class="nref" x1="' + MCX + '" y1="' + MCY + '" x2="' + MCX + '" y2="' + (MCY - 130) + '"></line>';
+  if (si && !si.p.same) {
+    const q = P(si.p), b = si.p.brg, ra = 50;
+    o += '<line class="bline" x1="' + MCX + '" y1="' + MCY + '" x2="' + fx(q.x) + '" y2="' + fx(q.y) + '"></line>';
+    const a0 = { x: MCX, y: MCY - ra }, a1 = { x: MCX + ra * Math.sin(b * RAD), y: MCY - ra * Math.cos(b * RAD) };
+    o += '<path class="arc" d="M' + fx(a0.x) + ' ' + fx(a0.y) + ' A' + ra + ' ' + ra + ' 0 ' + (b > 180 ? 1 : 0) + ' 1 ' + fx(a1.x) + ' ' + fx(a1.y) + '"></path>';
+    const lp = { x: MCX + (ra + 26) * Math.sin(b / 2 * RAD), y: MCY - (ra + 26) * Math.cos(b / 2 * RAD) };
+    arcLab = '<text class="arclab" x="' + fx(lp.x) + '" y="' + fx(lp.y) + '">' + b.toFixed(1) + '°</text>';
+  }
+
+  d.corners.forEach((c, i) => {
+    const q = P(c), t = out(q, C, 19), on = sel.k === 'c' && sel.i === i;
+    o += '<g data-k="c" data-i="' + i + '"><rect class="qdot" x="' + fx(q.x - 6.5) + '" y="' + fx(q.y - 6.5) + '" width="13" height="13" rx="2.5"></rect>'
+      + (on ? '<rect class="psel" x="' + fx(q.x - 11) + '" y="' + fx(q.y - 11) + '" width="22" height="22" rx="4"></rect>' : '')
+      + '<text class="clab" x="' + fx(t.x) + '" y="' + fx(t.y) + '">' + LET[i] + '</text></g>';
+  });
+  d.items.forEach((p, i) => {
+    const q = P(p), on = sel.k === 'p' && sel.i === i;
+    o += '<g data-k="p" data-i="' + i + '">' + (on ? '<circle class="psel" cx="' + fx(q.x) + '" cy="' + fx(q.y) + '" r="17"></circle>' : '')
+      + '<circle class="pdot ' + (p.inside ? 'pin' : 'pout') + '" cx="' + fx(q.x) + '" cy="' + fx(q.y) + '" r="11.5"></circle>'
+      + '<text class="mnum" x="' + fx(q.x) + '" y="' + fx(q.y) + '">' + (i + 1) + '</text></g>';
+  });
+  o += '<circle class="cenc" cx="' + MCX + '" cy="' + MCY + '" r="7"></circle>'
+    + '<line class="cenx" x1="' + (MCX - 11) + '" y1="' + MCY + '" x2="' + (MCX + 11) + '" y2="' + MCY + '"></line>'
+    + '<line class="cenx" x1="' + MCX + '" y1="' + (MCY - 11) + '" x2="' + MCX + '" y2="' + (MCY + 11) + '"></line>'
+    + arcLab + '</g>';
+
+  /* frame furniture: rulers, north arrow, scale bar */
+  o += '<rect class="mframe2" x="' + FX0 + '" y="' + FY0 + '" width="' + (FX1 - FX0) + '" height="' + (FY1 - FY0) + '"></rect>' + ticks;
+  o += '<text class="mtick" x="' + MCX + '" y="494">distance from the centre in ' + unit + ' (east to the right, north up)</text>';
+  o += '<g transform="translate(' + (FX1 - 28) + ' ' + (FY0 + 44) + ')"><polygon class="ntip" points="0,-26 9,6 0,0 -9,6"></polygon><text class="card nn" x="0" y="22" style="font-size:16px">N</text></g>';
+  const sx = FX0 + 14, sy = FY1 - 16;
+  o += '<g class="sbar"><line class="pscale" x1="' + sx + '" y1="' + sy + '" x2="' + fx(sx + nl.px) + '" y2="' + sy + '"></line>'
+    + '<line class="pscale" x1="' + sx + '" y1="' + (sy - 5) + '" x2="' + sx + '" y2="' + (sy + 5) + '"></line>'
+    + '<line class="pscale" x1="' + fx(sx + nl.px) + '" y1="' + (sy - 5) + '" x2="' + fx(sx + nl.px) + '" y2="' + (sy + 5) + '"></line>'
+    + '<text class="sidelab" x="' + fx(sx + nl.px / 2) + '" y="' + (sy - 13) + '">' + nl.len + ' ' + unit + '</text></g>';
+  svg.innerHTML = o;
+}
+
+function renderChips() {
+  const d = cenData;
+  if (!d) { $('chipsC').innerHTML = ''; $('chipsP').innerHTML = ''; $('selInfo').innerHTML = ''; return; }
+  const D = parseFloat($('decl').value) || 0;
+  const si = selItem();
+  const chip = (k, i, name, p, cls) => {
+    const on = sel.k === k && sel.i === i;
+    return '<button type="button" class="chip ' + cls + (on ? ' on' : '') + '" data-k="' + k + '" data-i="' + i + '" aria-pressed="' + on + '">'
+      + '<b>' + name + '</b><span>' + (p.same ? '—' : p.brg.toFixed(1) + '°') + '</span><small>' + lenStr(p.dist, 1) + '</small></button>';
+  };
+  $('chipsC').innerHTML = d.corners.map((c, i) => chip('c', i, LET[i], c, 'cor')).join('');
+  $('chipsP').innerHTML = d.items.map((p, i) => chip('p', i, String(i + 1), p, p.inside ? 'pin' : 'pout')).join('');
+  if (!si) { $('selInfo').innerHTML = ''; return; }
+  const p = si.p, cell = (a, b) => '<div><small>' + a + '</small><b>' + b + '</b></div>';
+  const tag = sel.k === 'c' ? '<span class="tag cor">Corner</span>'
+    : d.corners.length === 4 ? (p.inside ? '<span class="tag in">Inside the square</span>' : '<span class="tag out">Outside the square</span>') : '';
+  $('selInfo').innerHTML = '<div class="selhead"><b>' + si.name + '</b>' + tag + '</div>'
+    + (p.same ? '<p class="hint">This point is at the centre, so it has no bearing.</p>'
+      : '<div class="selgrid">' + cell('True bearing', deg(p.brg) + ' ' + windName(p.brg)) + cell('North-south angle', quadrant(p.brg))
+        + cell('Compass bearing', deg(mod(p.brg - D, 360))) + cell('Distance from centre', lenStr(p.dist, 2)) + '</div>');
+}
+
+function markRows() {
+  document.querySelectorAll('#tblCen tbody tr').forEach((tr) => {
+    tr.classList.toggle('sel', tr.dataset.k === sel.k && Number(tr.dataset.i) === sel.i);
+  });
+}
+
+function redrawCentre() {
+  drawCentre();
+  drawPlan();
+  renderChips();
+  markRows();
+}
+
+function selectItem(k, i) {
+  sel = { k: k, i: i };
+  drawPlan();
+  renderChips();
+  markRows();
+}
+
+$('planWrap').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-i]');
+  if (t) selectItem(t.dataset.k, Number(t.dataset.i));
+});
+$('tblCen').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr[data-i]');
+  if (tr) selectItem(tr.dataset.k, Number(tr.dataset.i));
+});
+$('allLines').addEventListener('change', drawPlan);
+['vPlan', 'vRing'].forEach((id) => $(id).addEventListener('change', () => {
+  $('planWrap').hidden = !$('vPlan').checked;
+  $('ringWrap').hidden = !$('vRing').checked;
+}));
+
+['cc', 'cp', 'q1', 'q2', 'q3', 'q4'].forEach((id) => {
+  $(id).addEventListener('input', () => renderCentre(false));
+  $(id).addEventListener('change', () => renderCentre(true));
+});
+$('autoC').addEventListener('change', () => renderCentre(true));
+$('decl').addEventListener('input', () => renderCentre(false));
+$('qPlot').addEventListener('click', () => {
+  ['1', '2', '3', '4'].forEach((n) => { $('q' + n).value = $('c' + n).value; });
+  renderCentre(true);
+});
+$('zIn').addEventListener('click', () => setZoom(zoomC * 1.25));
+$('zOut').addEventListener('click', () => setZoom(zoomC / 1.25));
+$('zFit').addEventListener('click', () => setZoom(1));
+$('zRange').addEventListener('input', () => setZoom(Math.pow(2, parseFloat($('zRange').value))));
+$('cenSvg').addEventListener('wheel', (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  setZoom(zoomC * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
+}, { passive: false });
+
+function renderPlot() {
+  const D = parseFloat($('decl').value) || 0;
+  const ids = ['pCen', 'pAvg', 'pArea', 'pArea2', 'pPer', 'pLong', 'pShape'];
+  const blank = () => {
+    ids.forEach((id) => { $(id).textContent = '—'; });
+    $('tblCorners').innerHTML = ''; $('tblSides').innerHTML = ''; $('plotSvg').innerHTML = '';
+    plotCentre = null;
+  };
+  if (!plotPts) { $('plotErr').textContent = ''; blank(); return; }
+  const g = plotGeometry(plotPts, D);
+  if (g.error) { $('plotErr').textContent = g.error; blank(); return; }
+  $('plotErr').textContent = '';
+  plotCentre = g.centre;
+  const ll = (p) => p.lat.toFixed(6) + ', ' + p.lon.toFixed(6);
+  $('pCen').textContent = ll(g.centre);
+  $('pAvg').textContent = ll(g.avg);
+  const sqft = fmtN(g.area * 10.7639104, 1) + ' sq ft', sqm = fmtN(g.area, 2) + ' m²', ac = fmtN(g.area / 4046.8564224, 4) + ' acre';
+  $('pArea').textContent = unitFt ? sqft : sqm;
+  $('pArea2').textContent = (unitFt ? sqm : sqft) + ' · ' + ac;
+  $('pPer').textContent = lenStr(g.perimeter, 2);
+  const L = g.sides[g.longest];
+  $('pLong').textContent = 'Side ' + (g.longest + 1) + ' to ' + ((g.longest + 1) % 4 + 1) + ', ' + lenStr(L.dist, 2) + ', bearing ' + deg(L.brg);
+  $('pShape').textContent = 'Angles total ' + deg(g.angleSum);
+  $('cenLink').href = 'https://www.google.com/maps?q=' + g.centre.lat.toFixed(6) + ',' + g.centre.lon.toFixed(6);
+
+  let h = '<thead><tr><th>Corner</th><th>Coordinates</th><th>Bearing from centre</th><th>N-S angle</th><th>Distance</th><th>Interior angle</th></tr></thead><tbody>';
+  g.corners.forEach((c, i) => {
+    h += '<tr><td>' + (i + 1) + '</td><td>' + ll(plotPts[i]) + '</td><td>' + deg(c.brg) + ' (' + windName(c.brg) + ')</td><td>'
+      + quadrant(c.brg) + '</td><td>' + lenStr(c.dist, 2) + '</td><td>' + deg(g.angles[i]) + '</td></tr>';
+  });
+  $('tblCorners').innerHTML = h + '</tbody>';
+
+  h = '<thead><tr><th>Side</th><th>True bearing</th><th>N-S angle</th><th>Compass bearing</th><th>Length</th></tr></thead><tbody>';
+  g.sides.forEach((sd, i) => {
+    h += '<tr><td>' + (i + 1) + ' to ' + ((i + 1) % 4 + 1) + '</td><td>' + deg(sd.brg) + ' (' + windName(sd.brg) + ')</td><td>'
+      + quadrant(sd.brg) + '</td><td>' + deg(sd.mag) + '</td><td>' + lenStr(sd.dist, 2) + '</td></tr>';
+  });
+  $('tblSides').innerHTML = h + '</tbody>';
+  drawPlot(g);
+}
+
+['c1', 'c2', 'c3', 'c4'].forEach((id) => {
+  $(id).addEventListener('input', () => readPlot(false));
+  $(id).addEventListener('change', () => readPlot(true));
+});
+$('decl').addEventListener('input', () => { if (plotPts) renderPlot(); });
+['uFt', 'uM'].forEach((id) => $(id).addEventListener('change', () => {
+  unitFt = $('uFt').checked;
+  update();
+  if (plotPts) renderPlot();
+  renderCentre(false);
+}));
+$('plotLoc').addEventListener('click', () => {
+  if (!plotCentre) return;
+  $('lat').value = numStr(plotCentre.lat);
+  $('lon').value = numStr(plotCentre.lon);
+  update();
+});
+$('when').addEventListener('input', () => { live = false; $('live').checked = false; update(); });
+$('live').addEventListener('change', () => { live = $('live').checked; update(); });
+$('now').addEventListener('click', () => { live = true; $('live').checked = true; update(); });
+$('copy').addEventListener('click', async () => {
+  const msg = $('copied');
+  try {
+    await navigator.clipboard.writeText(lastText);
+    msg.textContent = 'Copied.';
+  } catch (e) {
+    msg.textContent = 'Copy is blocked here. Select the values above instead.';
+  }
+  setTimeout(() => { msg.textContent = ''; }, 2500);
+});
+
+updatePoints(false);
+readPlot(false);
+renderCentre(false);
+setInterval(() => { if (live) update(); }, 1000);
+
+/* GPS buttons. They appear only where the browser allows location: a page opened on its own,
+   not inside the hosted viewer frame, which blocks location for every page. */
+function gpsAllowed() {
+  if (!('geolocation' in navigator)) return false;
+  let framed = false;
+  try { framed = window.self !== window.top; } catch (e) { framed = true; }
+  if (!framed) return true;
+  const pp = document.permissionsPolicy || document.featurePolicy;
+  return !!(pp && pp.allowsFeature && pp.allowsFeature('geolocation'));
+}
+
+let toastTimer = 0;
+function toast(msg) {
+  const t = $('gpsToast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
+}
+
+function getFix(done, fail) {
+  let best = null, id = 0, over = false;
+  const finish = () => {
+    if (over) return;
+    over = true;
+    navigator.geolocation.clearWatch(id);
+    clearTimeout(timer);
+    if (best) done(best); else fail({ code: 3 });
+  };
+  const timer = setTimeout(finish, 8000);
+  id = navigator.geolocation.watchPosition((p) => {
+    if (!best || p.coords.accuracy < best.coords.accuracy) best = p;
+    if (p.coords.accuracy <= 5) finish();
+  }, (e) => {
+    if (over) return;
+    over = true;
+    navigator.geolocation.clearWatch(id);
+    clearTimeout(timer);
+    fail(e);
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+}
+
+function useGps(btn, apply) {
+  const label = btn.querySelector('span');
+  const old = label.textContent;
+  btn.disabled = true;
+  label.textContent = 'Reading…';
+  getFix((p) => {
+    btn.disabled = false;
+    label.textContent = old;
+    const acc = p.coords.accuracy;
+    if (apply(p.coords.latitude, p.coords.longitude) === false) return;
+    toast('GPS read with an accuracy of about ±' + Math.round(acc) + ' m.' + (acc > 20 ? ' That is a weak fix. Move to open sky and try again.' : ''));
+  }, (e) => {
+    btn.disabled = false;
+    label.textContent = old;
+    toast(e.code === 1 ? 'Location is blocked for this page. Allow it in your browser\'s site settings, then try again.'
+      : e.code === 2 ? 'Your position is not available. Move outdoors and try again.'
+      : 'The GPS reading timed out. Try again with a clear view of the sky.');
+  });
+}
+
+(function addGpsButtons() {
+  if (!gpsAllowed()) return;
+  const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>';
+  const mkBtn = (text, aria) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'gps';
+    b.setAttribute('aria-label', aria);
+    b.innerHTML = ICON + '<span>' + text + '</span>';
+    return b;
+  };
+  const fire = (el) => {
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  ['gm', 'pa', 'pb', 'c1', 'c2', 'c3', 'c4', 'q1', 'q2', 'q3', 'q4', 'cc'].forEach((id) => {
+    const input = $(id);
+    const lab = document.querySelector('label[for="' + id + '"]');
+    const wrap = document.createElement('div');
+    wrap.className = 'gwrap';
+    input.parentNode.insertBefore(wrap, input);
+    wrap.appendChild(input);
+    const btn = mkBtn('GPS', 'Use my GPS location for ' + (lab ? lab.textContent : 'this box'));
+    wrap.appendChild(btn);
+    btn.addEventListener('click', () => useGps(btn, (la, lo) => {
+      if (id === 'cc') $('autoC').checked = false;
+      input.value = la.toFixed(6) + ', ' + lo.toFixed(6);
+      fire(input);
+    }));
+  });
+  const ta = $('cp');
+  const row = document.createElement('div');
+  row.className = 'gpsrow';
+  const tb = mkBtn('Add my GPS location as a point', 'Add my GPS location as a point');
+  row.appendChild(tb);
+  ta.parentNode.insertBefore(row, ta.nextSibling);
+  tb.addEventListener('click', () => useGps(tb, (la, lo) => {
+    const lines = ta.value.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length >= 10) { toast('The list already has 10 points. Remove one first.'); return false; }
+    lines.push(la.toFixed(6) + ', ' + lo.toFixed(6));
+    ta.value = lines.join('\n');
+    fire(ta);
+  }));
+})();
+
+/* Dashboard shell: menu, hash routing and the summary tiles on the overview. */
+const NAV = [
+  { id: 'overview', k: 1, label: 'Overview', sub: 'True north, the sun and your plot at a glance.',
+    icon: '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/>' },
+  { id: 'site', k: 2, label: 'Site and sun', short: 'Site', sub: 'Location, time, sun position and solar noon.',
+    icon: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>' },
+  { id: 'bearing', k: 3, label: 'Two points', short: 'Two points', sub: 'Degree and distance from point A to point B.',
+    icon: '<circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8 16l8-8"/>' },
+  { id: 'plot', k: 4, label: 'Plot', short: 'Plot', sub: 'Centre, area and bearings from four corner coordinates.',
+    icon: '<path d="M4 8l10-4 6 7-4 8-12-2z"/>' },
+  { id: 'centre', k: 5, label: 'From a centre', short: 'Centre', sub: 'Degrees of up to ten points measured from one centre.',
+    icon: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5"/><path d="M12 12l6-6M12 12l-6 3"/>' }
+];
+
+(function buildNav() {
+  const mk = (tab) => NAV.map((n) =>
+    '<a href="#' + n.id + '" data-v="' + n.id + '" style="--c:var(--c' + n.k + ');--cs:var(--c' + n.k + 's);--i:var(--i' + n.k + ');--on:var(--on' + n.k + ')"><svg viewBox="0 0 24 24" aria-hidden="true">' + n.icon + '</svg><span>' + (tab && n.short ? n.short : n.label) + '</span></a>'
+  ).join('');
+  $('navSide').innerHTML = mk(false);
+  $('navTabs').innerHTML = mk(true);
+})();
+
+function route() {
+  let h = (location.hash || '').slice(1);
+  if (!NAV.some((n) => n.id === h)) h = 'overview';
+  NAV.forEach((n) => { $('v-' + n.id).hidden = n.id !== h; });
+  document.querySelectorAll('[data-v]').forEach((a) => {
+    if (a.dataset.v === h) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  const cur = NAV.find((n) => n.id === h);
+  $('vTitle').textContent = cur.label;
+  $('vSub').textContent = cur.sub;
+  const app = document.querySelector('.app');
+  app.style.setProperty('--vc', 'var(--c' + cur.k + ')');
+  app.style.setProperty('--vcs', 'var(--c' + cur.k + 's)');
+  $('vIcon').innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true">' + cur.icon + '</svg>';
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+
+function syncTiles() {
+  const T = (id) => $(id).textContent;
+  const set = (id, v) => { const e = $(id); if (e.textContent !== v) e.textContent = v; };
+  set('kN', T('cN'));
+  set('kNs', 'True south at ' + T('cS'));
+  set('kAz', T('az'));
+  set('kAzs', 'Elevation ' + T('el'));
+  set('kNoon', T('noon'));
+  set('kNoons', 'Shadow of a 1 m stick ' + T('noonSh'));
+  set('kArea', T('pArea'));
+  set('kAreas', 'Centre ' + T('pCen'));
+  set('kBrg', T('brg'));
+  set('kBrgs', 'Distance ' + T('dist'));
+  set('kPts', cenData ? cenData.items.length + ' points' : '—');
+  set('kPtss', $('sqIn').textContent !== '—' ? $('sqIn').textContent + ' inside' : 'Centre ' + $('cc').value);
+  set('sbCoord', $('lat').value + ', ' + $('lon').value);
+  const href = $('gmLink').href;
+  if ($('sbLink').href !== href) $('sbLink').href = href;
+}
+route();
+syncTiles();
+setInterval(syncTiles, 400);
+</script>
+</body></html>
